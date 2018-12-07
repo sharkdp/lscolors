@@ -1,3 +1,5 @@
+///
+/// Useful reference: https://en.wikipedia.org/wiki/ANSI_escape_code
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -7,7 +9,7 @@ pub enum Color {
     Green,
     Yellow,
     Blue,
-    Purple,
+    Magenta,
     Cyan,
     White,
     Fixed(u8),
@@ -91,7 +93,7 @@ impl Style {
                 Some(32) => foreground = Some(Color::Green),
                 Some(33) => foreground = Some(Color::Yellow),
                 Some(34) => foreground = Some(Color::Blue),
-                Some(35) => foreground = Some(Color::Purple),
+                Some(35) => foreground = Some(Color::Magenta),
                 Some(36) => foreground = Some(Color::Cyan),
                 Some(37) => foreground = Some(Color::White),
                 Some(38) => match (parts.pop_front(), parts.pop_front()) {
@@ -114,7 +116,7 @@ impl Style {
                 Some(42) => background = Some(Color::Green),
                 Some(43) => background = Some(Color::Yellow),
                 Some(44) => background = Some(Color::Blue),
-                Some(45) => background = Some(Color::Purple),
+                Some(45) => background = Some(Color::Magenta),
                 Some(46) => background = Some(Color::Cyan),
                 Some(47) => background = Some(Color::White),
                 Some(48) => match (parts.pop_front(), parts.pop_front()) {
