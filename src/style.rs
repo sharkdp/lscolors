@@ -57,7 +57,7 @@ impl FontStyle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Style {
     pub foreground: Option<Color>,
     pub background: Option<Color>,
@@ -67,6 +67,10 @@ pub struct Style {
 impl Style {
     /// Parse ANSI escape sequences like `38;2;255;0;100;1;4` (pink, bold, underlined).
     pub fn from_ansi_sequence(code: &str) -> Option<Style> {
+        if code.is_empty() {
+            return Some(Style::default());
+        }
+
         let mut parts: VecDeque<u8> = code
             .split(';')
             .map(|c| u8::from_str_radix(c, 10).ok())
@@ -170,6 +174,18 @@ mod tests {
     }
 
     #[test]
+    fn parse_empty() {
+        assert_eq!(Some(Style::default()), Style::from_ansi_sequence(""));
+    }
+
+    #[test]
+    fn parse_reject() {
+        assert_eq!(None, Style::from_ansi_sequence("a"));
+        assert_eq!(None, Style::from_ansi_sequence("1;"));
+        assert_eq!(None, Style::from_ansi_sequence("33; 42"));
+    }
+
+    #[test]
     fn parse_font_style() {
         assert_style("00;31", Some(Color::Red), None, FontStyle::default());
         assert_style("03;34", Some(Color::Blue), None, FontStyle::italic());
@@ -230,6 +246,12 @@ mod tests {
             Some(Color::RGB(115, 3, 100)),
             None,
             FontStyle::italic(),
+        );
+        assert_style(
+            "48;2;100;200;0;1;38;2;0;10;20",
+            Some(Color::RGB(0, 10, 20)),
+            Some(Color::RGB(100, 200, 0)),
+            FontStyle::bold(),
         );
     }
 }

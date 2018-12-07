@@ -1,5 +1,4 @@
 /// A parser for the `LS_COLORS` environment variable.
-
 use std::collections::HashMap;
 
 pub mod style;
