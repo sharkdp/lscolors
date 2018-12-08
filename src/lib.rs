@@ -80,7 +80,7 @@ mod tests {
         assert_eq!(Some(Color::Magenta), style_foo.foreground);
         assert_eq!(None, style_foo.background);
 
-        let style_readme = lscolors.get_style_for("README.foo").unwrap();
+        let style_readme = lscolors.get_style_for("some/folder/README.foo").unwrap();
         assert_eq!(FontStyle::default(), style_readme.font_style);
         assert_eq!(Some(Color::Yellow), style_readme.foreground);
         assert_eq!(Some(Color::Blue), style_readme.background);
