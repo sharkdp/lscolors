@@ -151,13 +151,27 @@ impl Style {
     }
 
     #[cfg(feature = "ansi_term")]
+    fn to_ansi_color(color: &Color) -> ansi_term::Color {
+        match color {
+            &Color::RGB(r, g, b) => ansi_term::Color::RGB(r, g, b),
+            &Color::Fixed(n) => ansi_term::Color::Fixed(n),
+            &Color::Black => ansi_term::Color::Black,
+            &Color::Red => ansi_term::Color::Red,
+            &Color::Green => ansi_term::Color::Green,
+            &Color::Yellow => ansi_term::Color::Yellow,
+            &Color::Blue => ansi_term::Color::Blue,
+            &Color::Magenta => ansi_term::Color::Purple,
+            &Color::Cyan => ansi_term::Color::Cyan,
+            &Color::White => ansi_term::Color::White,
+        }
+    }
+
+    #[cfg(feature = "ansi_term")]
     pub fn to_ansi_style(&self) -> ansi_term::Style {
         let mut ansi_style = ansi_term::Style::default();
 
-        ansi_style.foreground = match self.foreground {
-            Some(Color::RGB(r, g, b)) => Some(ansi_term::Colour::RGB(r, g, b)),
-            _ => None,
-        };
+        ansi_style.foreground = self.foreground.as_ref().map(Self::to_ansi_color);
+        ansi_style.background = self.background.as_ref().map(Self::to_ansi_color);
 
         ansi_style.is_bold = self.font_style.bold;
         ansi_style.is_italic = self.font_style.italic;
