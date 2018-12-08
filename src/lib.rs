@@ -26,21 +26,23 @@ impl<'a> LsColors<'a> {
         for entry in lscolors.split(":") {
             let parts: Vec<_> = entry.split('=').collect();
 
-            if parts.len() != 2 {
-                continue;
-            }
+            if let Some([filetype, ansi_style]) = parts.get(0..2) {
+                if let Some(style) = Style::from_ansi_sequence(ansi_style) {
+                    if filetype.starts_with("*") {
+                        mapping.insert(&filetype[1..], style);
+                    } else {
+                        let result = LS_CODES.iter().find(|&c| c == filetype);
 
-            match parts[0..2] {
-                [filetype, ansi_style] => {
-                    if let Some(style) = Style::from_ansi_sequence(ansi_style) {
-                        if filetype.starts_with("*") {
-                            mapping.insert(&filetype[1..], style);
-                        } else {
-                            // TODO
+                        if let Some(code) = result {
+                            match code {
+                                // "di" => self.directory = style,
+                                // "ln" => self.symlink = style,
+                                // "ex" => self.executable = style,
+                                _ => {}
+                            }
                         }
                     }
                 }
-                _ => {}
             }
         }
 
@@ -49,7 +51,7 @@ impl<'a> LsColors<'a> {
 
     pub fn get_style_for(&self, filename: &str) -> Option<&Style> {
         for i in 0..(filename.len() - 1) {
-            if let Some(ref style) = self.mapping.get(&filename[i..]) {
+            if let Some(style) = self.mapping.get(&filename[i..]) {
                 return Some(style);
             }
         }
