@@ -1,6 +1,4 @@
-/// A parser for the `LS_COLORS` environment variable.
-use std::collections::HashMap;
-
+/// This crate contains datatypes and functions to work with the `LS_COLORS` environment variable.
 pub mod style;
 
 use crate::style::Style;
@@ -16,12 +14,12 @@ type FileType<'a> = &'a str;
 /// Defines how different file system entries should be colorized / styled.
 #[derive(Debug, PartialEq)]
 pub struct LsColors<'a> {
-    mapping: HashMap<FileType<'a>, Style>,
+    mapping: Vec<(FileType<'a>, Style)>,
 }
 
 impl<'a> LsColors<'a> {
     pub fn from_string(lscolors: &'a str) -> Self {
-        let mut mapping = HashMap::new();
+        let mut mapping = vec![];
 
         for entry in lscolors.split(":") {
             let parts: Vec<_> = entry.split('=').collect();
@@ -29,7 +27,7 @@ impl<'a> LsColors<'a> {
             if let Some([filetype, ansi_style]) = parts.get(0..2) {
                 if let Some(style) = Style::from_ansi_sequence(ansi_style) {
                     if filetype.starts_with("*") {
-                        mapping.insert(&filetype[1..], style);
+                        mapping.push((&filetype[1..], style));
                     } else {
                         let result = LS_CODES.iter().find(|&c| c == filetype);
 
@@ -50,8 +48,8 @@ impl<'a> LsColors<'a> {
     }
 
     pub fn get_style_for(&self, filename: &str) -> Option<&Style> {
-        for i in 0..(filename.len() - 1) {
-            if let Some(style) = self.mapping.get(&filename[i..]) {
+        for (filetype, style) in &self.mapping {
+            if filename.ends_with(filetype) {
                 return Some(style);
             }
         }
@@ -61,21 +59,24 @@ impl<'a> LsColors<'a> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::style::{Color, FontStyle};
     use crate::LsColors;
 
     #[test]
     fn test_from_string() {
-        let result = LsColors::from_string("rs=0:di=03;34:ln=01;36:*.foo=01;35:*README.foo=33");
+        let lscolors =
+            LsColors::from_string("rs=0:di=03;34:ln=01;36:*README.foo=33;44:*.foo=01;35");
 
-        let style_foo = result.get_style_for("dummy.foo").unwrap();
+        let style_foo = lscolors.get_style_for("dummy.foo").unwrap();
         assert_eq!(FontStyle::bold(), style_foo.font_style);
         assert_eq!(Some(Color::Magenta), style_foo.foreground);
+        assert_eq!(None, style_foo.background);
 
-        let style_foo = result.get_style_for("README.foo").unwrap();
-        assert_eq!(FontStyle::default(), style_foo.font_style);
-        assert_eq!(Some(Color::Yellow), style_foo.foreground);
+        let style_readme = lscolors.get_style_for("README.foo").unwrap();
+        assert_eq!(FontStyle::default(), style_readme.font_style);
+        assert_eq!(Some(Color::Yellow), style_readme.foreground);
+        assert_eq!(Some(Color::Blue), style_readme.background);
 
         // TODO: tests for directory, etc.
     }
