@@ -2,6 +2,9 @@
 /// Useful reference: https://en.wikipedia.org/wiki/ANSI_escape_code
 use std::collections::VecDeque;
 
+#[cfg(ansi_term)]
+use ansi_term;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Color {
     Black,
@@ -145,6 +148,22 @@ impl Style {
             background,
             font_style,
         })
+    }
+
+    #[cfg(feature = "ansi_term")]
+    pub fn to_ansi_style(&self) -> ansi_term::Style {
+        let mut ansi_style = ansi_term::Style::default();
+
+        ansi_style.foreground = match self.foreground {
+            Some(Color::RGB(r, g, b)) => Some(ansi_term::Colour::RGB(r, g, b)),
+            _ => None,
+        };
+
+        ansi_style.is_bold = self.font_style.bold;
+        ansi_style.is_italic = self.font_style.italic;
+        ansi_style.is_underline = self.font_style.underline;
+
+        ansi_style
     }
 }
 

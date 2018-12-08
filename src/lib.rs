@@ -17,27 +17,42 @@ type FileType<'a> = &'a str;
 #[derive(Debug, PartialEq)]
 pub struct LsColors<'a> {
     mapping: Vec<(FileType<'a>, Style)>,
+    directory: Option<Style>,
+    symlink: Option<Style>,
+    executable: Option<Style>,
+}
+
+impl<'a> Default for LsColors<'a> {
+    fn default() -> Self {
+        // TODO: do we want to return some pre-filled default here?
+        LsColors {
+            mapping: vec![],
+            directory: None,
+            symlink: None,
+            executable: None,
+        }
+    }
 }
 
 impl<'a> LsColors<'a> {
-    pub fn from_string(lscolors: &'a str) -> Self {
-        let mut mapping = vec![];
+    pub fn from_string(input: &'a str) -> Self {
+        let mut lscolors = LsColors::default();
 
-        for entry in lscolors.split(":") {
+        for entry in input.split(":") {
             let parts: Vec<_> = entry.split('=').collect();
 
             if let Some([filetype, ansi_style]) = parts.get(0..2) {
                 if let Some(style) = Style::from_ansi_sequence(ansi_style) {
                     if filetype.starts_with("*") {
-                        mapping.push((&filetype[1..], style));
+                        lscolors.mapping.push((&filetype[1..], style));
                     } else {
                         let result = LS_CODES.iter().find(|&c| c == filetype);
 
-                        if let Some(code) = result {
-                            match code {
-                                // "di" => self.directory = style,
-                                // "ln" => self.symlink = style,
-                                // "ex" => self.executable = style,
+                        if result.is_some() {
+                            match filetype {
+                                &"di" => lscolors.directory = Some(style),
+                                &"ln" => lscolors.symlink = Some(style),
+                                &"ex" => lscolors.executable = Some(style),
                                 _ => {}
                             }
                         }
@@ -46,14 +61,24 @@ impl<'a> LsColors<'a> {
             }
         }
 
-        LsColors { mapping }
+        lscolors
     }
 
-    pub fn get_style_for<P: AsRef<Path>>(&self, filename: P) -> Option<&Style> {
+    // TODO: write an alternative function which does not call metadata().
+    pub fn get_style_for<P: AsRef<Path>>(&self, path: P) -> Option<&Style> {
+        if let Ok(metadata) = path.as_ref().symlink_metadata() {
+            if metadata.is_dir() {
+                return self.directory.as_ref();
+            } else if metadata.file_type().is_symlink() {
+                return self.symlink.as_ref();
+            }
+            // TODO: executable
+        }
+
         // TODO: avoid the costly (?) 'to_str' call here which
         // needs to check for UTF-8 validity. Also, this does not
         // work with invalid-UTF-8 paths.
-        let filename = filename.as_ref().file_name()?.to_str()?;
+        let filename = path.as_ref().file_name()?.to_str()?;
 
         for (filetype, style) in &self.mapping {
             if filename.ends_with(filetype) {
