@@ -80,7 +80,9 @@ impl<'a> LsColors<'a> {
         // work with invalid-UTF-8 paths.
         let filename = path.as_ref().file_name()?.to_str()?;
 
-        for (filetype, style) in &self.mapping {
+        // We need to traverse LS_COLORS from back to front
+        // to be consistent with `ls`:
+        for (filetype, style) in self.mapping.iter().rev() {
             if filename.ends_with(filetype) {
                 return Some(style);
             }
