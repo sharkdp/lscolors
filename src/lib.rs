@@ -1,6 +1,8 @@
 /// This crate contains datatypes and functions to work with the `LS_COLORS` environment variable.
 pub mod style;
 
+use std::path::Path;
+
 use crate::style::Style;
 
 const LS_CODES: &[&str] = &[
@@ -47,7 +49,12 @@ impl<'a> LsColors<'a> {
         LsColors { mapping }
     }
 
-    pub fn get_style_for(&self, filename: &str) -> Option<&Style> {
+    pub fn get_style_for<P: AsRef<Path>>(&self, filename: P) -> Option<&Style> {
+        // TODO: avoid the costly (?) 'to_str' call here which
+        // needs to check for UTF-8 validity. Also, this does not
+        // work with invalid-UTF-8 paths.
+        let filename = filename.as_ref().file_name()?.to_str()?;
+
         for (filetype, style) in &self.mapping {
             if filename.ends_with(filetype) {
                 return Some(style);
