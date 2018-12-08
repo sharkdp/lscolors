@@ -1,15 +1,17 @@
-/// This crate contains datatypes and functions to work with the `LS_COLORS` environment variable.
+/// This crate contains datatypes and functions for working with the `LS_COLORS` environment
+/// variable.
 pub mod style;
 
 use std::path::Path;
 
 use crate::style::Style;
 
-const LS_CODES: &[&str] = &[
-    "no", "no", "fi", "rs", "di", "ln", "ln", "ln", "or", "mi", "pi", "pi", "so", "bd", "bd", "cd",
-    "cd", "do", "ex", "lc", "lc", "rc", "rc", "ec", "ec", "su", "su", "sg", "sg", "st", "ow", "ow",
-    "tw", "tw", "ca", "mh", "cl",
-];
+// TODO: do we need this?
+// const LS_CODES: &[&str] = &[
+//     "no", "no", "fi", "rs", "di", "ln", "ln", "ln", "or", "mi", "pi", "pi", "so", "bd", "bd", "cd",
+//     "cd", "do", "ex", "lc", "lc", "rc", "rc", "ec", "ec", "su", "su", "sg", "sg", "st", "ow", "ow",
+//     "tw", "tw", "ca", "mh", "cl",
+// ];
 
 type FileType<'a> = &'a str;
 
@@ -46,15 +48,11 @@ impl<'a> LsColors<'a> {
                     if filetype.starts_with("*") {
                         lscolors.mapping.push((&filetype[1..], style));
                     } else {
-                        let result = LS_CODES.iter().find(|&c| c == filetype);
-
-                        if result.is_some() {
-                            match filetype {
-                                &"di" => lscolors.directory = Some(style),
-                                &"ln" => lscolors.symlink = Some(style),
-                                &"ex" => lscolors.executable = Some(style),
-                                _ => {}
-                            }
+                        match filetype {
+                            &"di" => lscolors.directory = Some(style),
+                            &"ln" => lscolors.symlink = Some(style),
+                            &"ex" => lscolors.executable = Some(style),
+                            _ => {}
                         }
                     }
                 }
