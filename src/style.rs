@@ -160,6 +160,7 @@ mod tests {
     ) {
         let style = Style::from_ansi_sequence(code).unwrap();
         assert_eq!(foreground, style.foreground);
+        assert_eq!(background, style.background);
         assert_eq!(font_style, style.font_style);
     }
 
