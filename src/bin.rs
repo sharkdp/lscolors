@@ -20,16 +20,23 @@ fn run() -> io::Result<()> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
 
-    for line in stdin.lock().lines() {
-        let line = line.unwrap(); // TODO
-        let path = Path::new(&line);
+    let mut buf = vec![];
+    while let Some(size) = stdin.lock().read_until(b'\n', &mut buf).ok() {
+        if size == 0 {
+            break;
+        }
+
+        let path_str = String::from_utf8_lossy(&buf[..(buf.len() - 1)]);
+        let path = Path::new(path_str.as_ref());
         let style = ls_colors.get_style_for(path);
 
         if let Some(style) = style {
-            write!(stdout, "{}\n", style.to_ansi_style().paint(line))?;
+            write!(stdout, "{}\n", style.to_ansi_style().paint(path_str))?;
         } else {
-            write!(stdout, "{}\n", line)?;
+            write!(stdout, "{}\n", path_str)?;
         }
+
+        buf.clear();
     }
 
     Ok(())
