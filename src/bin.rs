@@ -14,7 +14,7 @@ fn run() -> io::Result<()> {
     let ls_colors = ls_colors_env
         .as_ref()
         .map(|s| LsColors::from_string(s))
-        .unwrap_or(LsColors::default());
+        .unwrap_or_default();
 
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -31,9 +31,9 @@ fn run() -> io::Result<()> {
         let style = ls_colors.get_style_for(path);
 
         if let Some(style) = style {
-            write!(stdout, "{}\n", style.to_ansi_style().paint(path_str))?;
+            writeln!(stdout, "{}", style.to_ansi_style().paint(path_str))?;
         } else {
-            write!(stdout, "{}\n", path_str)?;
+            writeln!(stdout, "{}", path_str)?;
         }
 
         buf.clear();

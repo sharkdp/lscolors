@@ -40,18 +40,18 @@ impl<'a> LsColors<'a> {
     pub fn from_string(input: &'a str) -> Self {
         let mut lscolors = LsColors::empty();
 
-        for entry in input.split(":") {
+        for entry in input.split(':') {
             let parts: Vec<_> = entry.split('=').collect();
 
             if let Some([filetype, ansi_style]) = parts.get(0..2) {
                 if let Some(style) = Style::from_ansi_sequence(ansi_style) {
-                    if filetype.starts_with("*") {
+                    if filetype.starts_with('*') {
                         lscolors.mapping.push((&filetype[1..], style));
                     } else {
-                        match filetype {
-                            &"di" => lscolors.directory = Some(style),
-                            &"ln" => lscolors.symlink = Some(style),
-                            &"ex" => lscolors.executable = Some(style),
+                        match *filetype {
+                            "di" => lscolors.directory = Some(style),
+                            "ln" => lscolors.symlink = Some(style),
+                            "ex" => lscolors.executable = Some(style),
                             _ => {}
                         }
                     }
