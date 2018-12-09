@@ -1,14 +1,21 @@
 [package]
-authors = ["David Peter <mail@david-peter.de>"]
-categories = ["command-line-utilities"]
-description = "Library to read and write the LS_COLORS command line variable"
-homepage = "https://github.com/sharkdp/lscolors"
-license = "MIT/Apache-2.0"
 name = "lscolors"
-readme = "README.md"
+description = "Colorize paths using the LS_COLORS environment variable"
+categories = ["command-line-interface"]
+homepage = "https://github.com/sharkdp/lscolors"
 repository = "https://github.com/sharkdp/lscolors"
+keywords = [
+    "cli",
+    "linux",
+    "terminal",
+    "filesystem",
+    "color"
+]
+license = "MIT/Apache-2.0"
 version = "0.1.0"
+readme = "README.md"
 edition = "2018"
+authors = ["David Peter <mail@david-peter.de>"]
 
 [dependencies]
 ansi_term = { version = "0.11", optional = true }
