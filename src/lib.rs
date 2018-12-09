@@ -1,5 +1,4 @@
-//! This crate contains datatypes and functions for working with the `LS_COLORS` environment
-//! variable.
+//! A library for colorizing paths according to the `LS_COLORS` environment variable.
 //!
 //! # Example
 //! ```
@@ -12,8 +11,8 @@
 mod fs;
 pub mod style;
 
-use std::path::Path;
 use std::env;
+use std::path::Path;
 
 use crate::style::Style;
 
@@ -47,7 +46,10 @@ impl LsColors {
     }
 
     pub fn from_env() -> Option<Self> {
-        env::var("LS_COLORS").ok().as_ref().map(|s| Self::from_string(s))
+        env::var("LS_COLORS")
+            .ok()
+            .as_ref()
+            .map(|s| Self::from_string(s))
     }
 
     pub fn from_string(input: &str) -> Self {
