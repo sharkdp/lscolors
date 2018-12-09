@@ -74,9 +74,8 @@ impl<'a> LsColors<'a> {
             }
         }
 
-        // TODO: avoid the costly (?) 'to_str' call here which
-        // needs to check for UTF-8 validity. Also, this does not
-        // work with invalid-UTF-8 paths.
+        // Note: using '.to_str()' here means that filename
+        // matching will not work with invalid-UTF-8 paths.
         let filename = path.as_ref().file_name()?.to_str()?;
 
         // We need to traverse LS_COLORS from back to front
