@@ -35,6 +35,7 @@ pub struct LsColors {
     mapping: Vec<(FileType, Style)>,
     directory: Option<Style>,
     symlink: Option<Style>,
+    broken_symlink: Option<Style>,
     executable: Option<Style>,
 }
 
@@ -53,6 +54,7 @@ impl LsColors {
             mapping: vec![],
             directory: None,
             symlink: None,
+            broken_symlink: None,
             executable: None,
         }
     }
@@ -81,6 +83,7 @@ impl LsColors {
                             "di" => lscolors.directory = Some(style),
                             "ln" => lscolors.symlink = Some(style),
                             "ex" => lscolors.executable = Some(style),
+                            "or" | "mi" => lscolors.broken_symlink = Some(style),
                             _ => {}
                         }
                     }
@@ -113,7 +116,12 @@ impl LsColors {
             if metadata.is_dir() {
                 return self.directory.as_ref();
             } else if metadata.file_type().is_symlink() {
-                return self.symlink.as_ref();
+                // This works because `Path::exists` traverses symlinks.
+                if path.as_ref().exists() {
+                    return self.symlink.as_ref();
+                } else {
+                    return self.broken_symlink.as_ref();
+                }
             } else if crate::fs::is_executable(&metadata) {
                 return self.executable.as_ref();
             }
