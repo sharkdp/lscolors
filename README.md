@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/sharkdp/lscolors.svg?branch=master)](https://travis-ci.org/sharkdp/lscolors)
 
-A library for colorizing paths according to the `LS_COLORS` environment variable.
+A library for colorizing paths according to the `LS_COLORS` environment variable (like `ls`).
 
 ## Usage
 
@@ -19,7 +19,7 @@ let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
 println!("{}", ansi_style.paint(path));
 ```
 
-## CLI example
+## Command-line application
 
 This crate also comes with a small command-line program `lscolors` that
 can be used to colorize the output of other commands:
