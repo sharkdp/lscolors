@@ -103,7 +103,27 @@ mod tests {
     use crate::LsColors;
 
     #[test]
-    fn test_from_string() {
+    fn basic_usage() {
+        let lscolors = LsColors::from_string("di=03;34:ln=01;36:*.rs=01;35;44");
+
+        let style_dir = lscolors.directory.clone().unwrap();
+        assert_eq!(FontStyle::italic(), style_dir.font_style);
+        assert_eq!(Some(Color::Blue), style_dir.foreground);
+        assert_eq!(None, style_dir.background);
+
+        let style_symlink = lscolors.symlink.clone().unwrap();
+        assert_eq!(FontStyle::bold(), style_symlink.font_style);
+        assert_eq!(Some(Color::Cyan), style_symlink.foreground);
+        assert_eq!(None, style_symlink.background);
+
+        let style_rs = lscolors.get_style_for("test.rs").unwrap();
+        assert_eq!(FontStyle::bold(), style_rs.font_style);
+        assert_eq!(Some(Color::Magenta), style_rs.foreground);
+        assert_eq!(Some(Color::Blue), style_rs.background);
+    }
+
+    #[test]
+    fn uses_correct_ordering() {
         let lscolors =
             LsColors::from_string("rs=0:di=03;34:ln=01;36:*.foo=01;35:*README.foo=33;44");
 
@@ -116,8 +136,6 @@ mod tests {
         assert_eq!(FontStyle::default(), style_readme.font_style);
         assert_eq!(Some(Color::Yellow), style_readme.foreground);
         assert_eq!(Some(Color::Blue), style_readme.background);
-
-        // TODO: tests for directory, etc.
     }
 
     // TODO: tests for invalid patterns
