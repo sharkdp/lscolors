@@ -92,8 +92,24 @@ impl LsColors {
     }
 
     /// Get the ANSI style for a given path.
+    ///
+    /// *Note:* this function calls `Path::symlink_metadata` internally. If you already happen to
+    /// have the `Metadata` available, use [`style_for_path_with_metadata`](#method.style_for_path_with_metadata).
     pub fn style_for_path<P: AsRef<Path>>(&self, path: P) -> Option<&Style> {
-        if let Ok(metadata) = path.as_ref().symlink_metadata() {
+        let metadata = path.as_ref().symlink_metadata().ok();
+        self.style_for_path_with_metadata(path, metadata.as_ref())
+    }
+
+    /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
+    ///
+    /// *Note:* The `Metadata` struct must have been acquired via `Path::symlink_metadata` in
+    /// order to colorize symbolic links correctly.
+    pub fn style_for_path_with_metadata<P: AsRef<Path>>(
+        &self,
+        path: P,
+        metadata: Option<&std::fs::Metadata>,
+    ) -> Option<&Style> {
+        if let Some(metadata) = metadata {
             if metadata.is_dir() {
                 return self.directory.as_ref();
             } else if metadata.file_type().is_symlink() {
