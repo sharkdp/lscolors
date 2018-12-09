@@ -125,16 +125,17 @@ mod tests {
     }
 
     #[test]
-    fn uses_correct_ordering() {
-        let lscolors =
-            LsColors::from_string("rs=0:di=03;34:ln=01;36:*.foo=01;35:*README.foo=33;44");
+    fn get_style_for_uses_correct_ordering() {
+        let lscolors = LsColors::from_string("*.foo=01;35:*README.foo=33;44");
 
-        let style_foo = lscolors.get_style_for("dummy.foo").unwrap();
+        let style_foo = lscolors.get_style_for("some/folder/dummy.foo").unwrap();
         assert_eq!(FontStyle::bold(), style_foo.font_style);
         assert_eq!(Some(Color::Magenta), style_foo.foreground);
         assert_eq!(None, style_foo.background);
 
-        let style_readme = lscolors.get_style_for("some/folder/README.foo").unwrap();
+        let style_readme = lscolors
+            .get_style_for("some/other/folder/README.foo")
+            .unwrap();
         assert_eq!(FontStyle::default(), style_readme.font_style);
         assert_eq!(Some(Color::Yellow), style_readme.foreground);
         assert_eq!(Some(Color::Blue), style_readme.background);
