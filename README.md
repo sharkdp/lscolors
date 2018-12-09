@@ -7,10 +7,15 @@ A library for colorizing paths according to the `LS_COLORS` environment variable
 ## Usage
 
 ```rust
-use lscolors::LsColors;
+use lscolors::{LsColors, Style};
 
 let lscolors = LsColors::from_env().unwrap_or_default();
-let style = lscolors.get_style_for("some/folder/test.rs");
+
+let path = "some/folder/archive.zip";
+let style = lscolors.style_for_path(path);
+
+let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
+println!("{}", ansi_style.paint(path));
 ```
 
 ## CLI example
