@@ -37,6 +37,10 @@ pub struct LsColors {
     symlink: Option<Style>,
     broken_symlink: Option<Style>,
     executable: Option<Style>,
+    fifo: Option<Style>,
+    socket: Option<Style>,
+    block_device: Option<Style>,
+    char_device: Option<Style>,
 }
 
 impl Default for LsColors {
@@ -56,6 +60,10 @@ impl LsColors {
             symlink: None,
             broken_symlink: None,
             executable: None,
+            fifo: None,
+            socket: None,
+            block_device: None,
+            char_device: None,
         }
     }
 
@@ -84,6 +92,10 @@ impl LsColors {
                             "ln" => lscolors.symlink = Some(style),
                             "ex" => lscolors.executable = Some(style),
                             "or" | "mi" => lscolors.broken_symlink = Some(style),
+                            "pi" => lscolors.fifo = Some(style),
+                            "so" => lscolors.socket = Some(style),
+                            "bd" => lscolors.block_device = Some(style),
+                            "cd" => lscolors.char_device = Some(style),
                             _ => {}
                         }
                     }
@@ -115,14 +127,37 @@ impl LsColors {
         if let Some(metadata) = metadata {
             if metadata.is_dir() {
                 return self.directory.as_ref();
-            } else if metadata.file_type().is_symlink() {
+            }
+
+            if metadata.file_type().is_symlink() {
                 // This works because `Path::exists` traverses symlinks.
                 if path.as_ref().exists() {
                     return self.symlink.as_ref();
                 } else {
                     return self.broken_symlink.as_ref();
                 }
-            } else if crate::fs::is_executable(&metadata) {
+            }
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::FileTypeExt;
+
+                let filetype = metadata.file_type();
+                if filetype.is_fifo() {
+                    return self.fifo.as_ref();
+                }
+                if filetype.is_socket() {
+                    return self.socket.as_ref();
+                }
+                if filetype.is_block_device() {
+                    return self.block_device.as_ref();
+                }
+                if filetype.is_char_device() {
+                    return self.char_device.as_ref();
+                }
+            }
+
+            if crate::fs::is_executable(&metadata) {
                 return self.executable.as_ref();
             }
         }
