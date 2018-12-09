@@ -11,6 +11,7 @@
 //!     .as_ref()
 //!     .map(|s| LsColors::from_string(s))
 //!     .unwrap_or_default();
+//!
 //! let style = lscolors.get_style_for("some/folder/test.rs");
 //! ```
 
