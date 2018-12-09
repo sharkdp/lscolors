@@ -1,5 +1,7 @@
 # lscolors
 
+[![Build Status](https://travis-ci.org/sharkdp/lscolors.svg?branch=master)](https://travis-ci.org/sharkdp/lscolors)
+
 A library for colorizing paths according to the `LS_COLORS` environment variable.
 
 ## Usage
@@ -16,7 +18,7 @@ let style = lscolors.get_style_for("some/folder/test.rs");
 This crate also comes with a small command-line program `lscolors` that
 can be used to colorize the output of other commands:
 ```bash
-> find -maxdepth 2 ./ | lscolors
+> find . -maxdepth 2 | lscolors
 
 > rg foo -l | lscolors
 ```
