@@ -1,5 +1,7 @@
-/// This crate contains datatypes and functions for working with the `LS_COLORS` environment
-/// variable.
+//! This crate contains datatypes and functions for working with the `LS_COLORS` environment
+//! variable.
+
+mod fs;
 pub mod style;
 
 use std::path::Path;
@@ -69,8 +71,9 @@ impl<'a> LsColors<'a> {
                 return self.directory.as_ref();
             } else if metadata.file_type().is_symlink() {
                 return self.symlink.as_ref();
+            } else if crate::fs::is_executable(&metadata) {
+                return self.executable.as_ref();
             }
-            // TODO: executable
         }
 
         // TODO: avoid the costly (?) 'to_str' call here which
