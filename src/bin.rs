@@ -17,15 +17,24 @@ fn run() -> io::Result<()> {
         .unwrap_or(LsColors::default());
 
     let stdin = io::stdin();
+    let stdout = io::stdout();
+    let mut stdout = stdout.lock();
+
     for line in stdin.lock().lines() {
-        let line = line.unwrap();
+        let line = line.unwrap(); // TODO
         let path = Path::new(&line);
         let style = ls_colors.get_style_for(path);
 
         if let Some(style) = style {
-            println!("{}", style.to_ansi_style().paint(path.to_string_lossy()));
+            write!(stdout, "{}\n", style.to_ansi_style().paint(line))?;
         } else {
-            println!("{}", path.to_string_lossy());
+            write!(stdout, "{}\n", line)?;
         }
     }
+
+    Ok(())
+}
+
+fn main() {
+    run().ok();
 }
