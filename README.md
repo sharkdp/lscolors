@@ -5,15 +5,9 @@ A library for colorizing paths according to the `LS_COLORS` environment variable
 ## Usage
 
 ```rust
-use std::env;
 use lscolors::LsColors;
 
-let lscolors_env = env::var("LS_COLORS");
-let lscolors = lscolors_env
-    .as_ref()
-    .map(|s| LsColors::from_string(s))
-    .unwrap_or_default();
-
+let lscolors = LsColors::from_env().unwrap_or_default();
 let style = lscolors.get_style_for("some/folder/test.rs");
 ```
 

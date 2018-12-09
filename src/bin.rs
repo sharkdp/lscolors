@@ -1,5 +1,4 @@
 use std::alloc::System;
-use std::env;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
@@ -10,11 +9,7 @@ use lscolors::LsColors;
 static A: System = System;
 
 fn run() -> io::Result<()> {
-    let ls_colors_env = env::var("LS_COLORS");
-    let ls_colors = ls_colors_env
-        .as_ref()
-        .map(|s| LsColors::from_string(s))
-        .unwrap_or_default();
+    let ls_colors = LsColors::from_env().unwrap_or_default();
 
     let stdin = io::stdin();
     let stdout = io::stdout();
