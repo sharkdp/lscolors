@@ -1,5 +1,18 @@
 //! This crate contains datatypes and functions for working with the `LS_COLORS` environment
 //! variable.
+//!
+//! # Example
+//! ```
+//! use std::env;
+//! use lscolors::LsColors;
+//!
+//! let lscolors_env = env::var("LS_COLORS");
+//! let lscolors = lscolors_env
+//!     .as_ref()
+//!     .map(|s| LsColors::from_string(s))
+//!     .unwrap_or_default();
+//! let style = lscolors.get_style_for("some/folder/test.rs");
+//! ```
 
 mod fs;
 pub mod style;
