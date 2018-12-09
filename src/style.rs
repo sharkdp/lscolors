@@ -1,10 +1,14 @@
-///
-/// Useful reference: https://en.wikipedia.org/wiki/ANSI_escape_code
+//! A module for ANSI styles
+//!
+//! For more information, see
+//! [ANSI escape code (Wikipedia)](https://en.wikipedia.org/wiki/ANSI_escape_code).
 use std::collections::VecDeque;
 
 #[cfg(ansi_term)]
 use ansi_term;
 
+/// A `Color` can be one of the pre-defined ANSI colors (`Red`, `Green`, ..),
+/// a 8-bit ANSI color (`Fixed(u8)`) or a 24-bit color (`RGB(u8, u8, u8)`).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Color {
     Black,
@@ -20,8 +24,9 @@ pub enum Color {
 }
 
 impl Color {
+    /// Convert to a `ansi_term::Color` (if the `ansi_term` feature is enabled).
     #[cfg(feature = "ansi_term")]
-    fn to_ansi_color(&self) -> ansi_term::Color {
+    pub fn to_ansi_term_color(&self) -> ansi_term::Color {
         match self {
             Color::RGB(r, g, b) => ansi_term::Color::RGB(*r, *g, *b),
             Color::Fixed(n) => ansi_term::Color::Fixed(*n),
@@ -37,6 +42,7 @@ impl Color {
     }
 }
 
+/// Font-style attributes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FontStyle {
     bold: bool,
@@ -80,6 +86,7 @@ impl FontStyle {
     }
 }
 
+/// A foreground color, background color and font-style.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Style {
     pub foreground: Option<Color>,
@@ -168,12 +175,13 @@ impl Style {
         })
     }
 
+    /// Convert to a `ansi_term::Style` (if the `ansi_term` feature is enabled).
     #[cfg(feature = "ansi_term")]
-    pub fn to_ansi_style(&self) -> ansi_term::Style {
+    pub fn to_ansi_term_style(&self) -> ansi_term::Style {
         let mut ansi_style = ansi_term::Style::default();
 
-        ansi_style.foreground = self.foreground.as_ref().map(Color::to_ansi_color);
-        ansi_style.background = self.background.as_ref().map(Color::to_ansi_color);
+        ansi_style.foreground = self.foreground.as_ref().map(Color::to_ansi_term_color);
+        ansi_style.background = self.background.as_ref().map(Color::to_ansi_term_color);
 
         ansi_style.is_bold = self.font_style.bold;
         ansi_style.is_italic = self.font_style.italic;

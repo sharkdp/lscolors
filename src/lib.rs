@@ -2,10 +2,15 @@
 //!
 //! # Example
 //! ```
-//! use lscolors::LsColors;
+//! use lscolors::{LsColors, Style};
 //!
 //! let lscolors = LsColors::from_env().unwrap_or_default();
-//! let style = lscolors.get_style_for("some/folder/test.rs");
+//!
+//! let path = "some/folder/archive.zip";
+//! let style = lscolors.style_for_path(path);
+//!
+//! let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
+//! println!("{}", ansi_style.paint(path));
 //! ```
 
 mod fs;
@@ -14,15 +19,18 @@ pub mod style;
 use std::env;
 use std::path::Path;
 
-use crate::style::Style;
+pub use crate::style::{Color, FontStyle, Style};
 
 type FileType = String;
 
 const LS_COLORS_DEFAULT: &str = "rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:";
 
 /// Holds information about how different file system entries should be colorized / styled.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LsColors {
+    // Note: you might expect to see a `HashMap` here, but we need to
+    // preserve the exact order of the mapping in order to be consistent
+    // with `ls`.
     mapping: Vec<(FileType, Style)>,
     directory: Option<Style>,
     symlink: Option<Style>,
@@ -30,12 +38,15 @@ pub struct LsColors {
 }
 
 impl Default for LsColors {
+    /// Constructs a default `LsColors` instance with some
+    /// default styles.
     fn default() -> Self {
         LsColors::from_string(LS_COLORS_DEFAULT)
     }
 }
 
 impl LsColors {
+    /// Construct an empty [`LsColors`](struct.LsColors.html) instance with no pre-defined styles.
     pub fn empty() -> Self {
         LsColors {
             mapping: vec![],
@@ -45,6 +56,7 @@ impl LsColors {
         }
     }
 
+    /// Creates a new [`LsColors`](struct.LsColors.html) instance from the `LS_COLORS` environment variable.
     pub fn from_env() -> Option<Self> {
         env::var("LS_COLORS")
             .ok()
@@ -52,6 +64,7 @@ impl LsColors {
             .map(|s| Self::from_string(s))
     }
 
+    /// Creates a new [`LsColors`](struct.LsColors.html) instance from the given string.
     pub fn from_string(input: &str) -> Self {
         let mut lscolors = LsColors::empty();
 
@@ -77,8 +90,8 @@ impl LsColors {
         lscolors
     }
 
-    // TODO: write an alternative function which does not call metadata().
-    pub fn get_style_for<P: AsRef<Path>>(&self, path: P) -> Option<&Style> {
+    /// Get the ANSI style for a given path.
+    pub fn style_for_path<P: AsRef<Path>>(&self, path: P) -> Option<&Style> {
         if let Ok(metadata) = path.as_ref().symlink_metadata() {
             if metadata.is_dir() {
                 return self.directory.as_ref();
@@ -126,23 +139,23 @@ mod tests {
         assert_eq!(Some(Color::Cyan), style_symlink.foreground);
         assert_eq!(None, style_symlink.background);
 
-        let style_rs = lscolors.get_style_for("test.wav").unwrap();
+        let style_rs = lscolors.style_for_path("test.wav").unwrap();
         assert_eq!(FontStyle::default(), style_rs.font_style);
         assert_eq!(Some(Color::Cyan), style_rs.foreground);
         assert_eq!(None, style_rs.background);
     }
 
     #[test]
-    fn get_style_for_uses_correct_ordering() {
+    fn get_style_for_path_uses_correct_ordering() {
         let lscolors = LsColors::from_string("*.foo=01;35:*README.foo=33;44");
 
-        let style_foo = lscolors.get_style_for("some/folder/dummy.foo").unwrap();
+        let style_foo = lscolors.style_for_path("some/folder/dummy.foo").unwrap();
         assert_eq!(FontStyle::bold(), style_foo.font_style);
         assert_eq!(Some(Color::Magenta), style_foo.foreground);
         assert_eq!(None, style_foo.background);
 
         let style_readme = lscolors
-            .get_style_for("some/other/folder/README.foo")
+            .style_for_path("some/other/folder/README.foo")
             .unwrap();
         assert_eq!(FontStyle::default(), style_readme.font_style);
         assert_eq!(Some(Color::Yellow), style_readme.foreground);
