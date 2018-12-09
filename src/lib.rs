@@ -29,6 +29,12 @@ pub struct LsColors<'a> {
 impl<'a> Default for LsColors<'a> {
     fn default() -> Self {
         // TODO: do we want to return some pre-filled default here?
+        LsColors::empty()
+    }
+}
+
+impl<'a> LsColors<'a> {
+    pub fn empty() -> Self {
         LsColors {
             mapping: vec![],
             directory: None,
@@ -36,11 +42,9 @@ impl<'a> Default for LsColors<'a> {
             executable: None,
         }
     }
-}
 
-impl<'a> LsColors<'a> {
     pub fn from_string(input: &'a str) -> Self {
-        let mut lscolors = LsColors::default();
+        let mut lscolors = LsColors::empty();
 
         for entry in input.split(":") {
             let parts: Vec<_> = entry.split('=').collect();
@@ -101,7 +105,7 @@ mod tests {
     #[test]
     fn test_from_string() {
         let lscolors =
-            LsColors::from_string("rs=0:di=03;34:ln=01;36:*README.foo=33;44:*.foo=01;35");
+            LsColors::from_string("rs=0:di=03;34:ln=01;36:*.foo=01;35:*README.foo=33;44");
 
         let style_foo = lscolors.get_style_for("dummy.foo").unwrap();
         assert_eq!(FontStyle::bold(), style_foo.font_style);
