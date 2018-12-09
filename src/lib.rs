@@ -94,7 +94,9 @@ impl LsColors {
         // We need to traverse LS_COLORS from back to front
         // to be consistent with `ls`:
         for (filetype, style) in self.mapping.iter().rev() {
-            if filename.ends_with(filetype) {
+            // Note: For some reason, 'ends_with' is much
+            // slower if we omit `.as_str()` here:
+            if filename.ends_with(filetype.as_str()) {
                 return Some(style);
             }
         }
