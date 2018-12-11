@@ -85,7 +85,9 @@ impl LsColors {
             if let Some([filetype, ansi_style]) = parts.get(0..2) {
                 if let Some(style) = Style::from_ansi_sequence(ansi_style) {
                     if filetype.starts_with('*') {
-                        lscolors.mapping.push((filetype[1..].to_string(), style));
+                        lscolors
+                            .mapping
+                            .push((filetype[1..].to_string().to_ascii_lowercase(), style));
                     } else {
                         match *filetype {
                             "di" => lscolors.directory = Some(style),
@@ -164,7 +166,7 @@ impl LsColors {
 
         // Note: using '.to_str()' here means that filename
         // matching will not work with invalid-UTF-8 paths.
-        let filename = path.as_ref().file_name()?.to_str()?;
+        let filename = path.as_ref().file_name()?.to_str()?.to_ascii_lowercase();
 
         // We need to traverse LS_COLORS from back to front
         // to be consistent with `ls`:
@@ -220,5 +222,15 @@ mod tests {
         assert_eq!(FontStyle::default(), style_readme.font_style);
         assert_eq!(Some(Color::Yellow), style_readme.foreground);
         assert_eq!(Some(Color::Blue), style_readme.background);
+    }
+
+    #[test]
+    fn get_style_for_path_uses_lowercase_matching() {
+        let lscolors = LsColors::from_string("*.O=01;35");
+
+        let style_artifact = lscolors.style_for_path("artifact.o").unwrap();
+        assert_eq!(FontStyle::bold(), style_artifact.font_style);
+        assert_eq!(Some(Color::Magenta), style_artifact.foreground);
+        assert_eq!(None, style_artifact.background);
     }
 }
