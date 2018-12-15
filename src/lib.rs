@@ -18,7 +18,8 @@ mod fs;
 pub mod style;
 
 use std::env;
-use std::path::Path;
+use std::ffi::OsString;
+use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
 pub use crate::style::{Color, FontStyle, Style};
 
@@ -179,6 +180,45 @@ impl LsColors {
         }
 
         None
+    }
+
+    /// Get ANSI styles for each component of a given path. Components already
+    /// include the patj separator symbol, if required. For a path like
+    /// `foo/bar/test.md`, this would return three pairs for the components
+    /// `foo/`, `bar/` and `test.md` together with their respective styles.
+    pub fn style_for_path_components<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> Vec<(OsString, Option<&Style>)> {
+        let mut styled_components = vec![];
+
+        // Full path to the current component.
+        let mut component_path = PathBuf::new();
+
+        // Traverse the path and colorize each component
+        let mut components = path.as_ref().components().peekable();
+        while let Some(component) = components.next() {
+            let mut component_str = component.as_os_str().to_os_string();
+
+            component_path.push(&component_str);
+            let style = self.style_for_path(&component_path);
+
+            if components.peek().is_some() {
+                match component {
+                    // Prefix needs no separator, as it is always followed by RootDir.
+                    // RootDir is already a separator.
+                    Component::Prefix(_) | Component::RootDir => {}
+                    // Everything else uses a separator that is painted the same way as the component.
+                    Component::CurDir | Component::ParentDir | Component::Normal(_) => {
+                        component_str.push(MAIN_SEPARATOR.to_string());
+                    }
+                }
+            }
+
+            styled_components.push((component_str, style));
+        }
+
+        styled_components
     }
 }
 
