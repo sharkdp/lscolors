@@ -1,4 +1,5 @@
 use std::alloc::System;
+use std::env;
 use std::io;
 use std::io::prelude::*;
 
@@ -7,28 +8,45 @@ use lscolors::{LsColors, Style};
 #[global_allocator]
 static A: System = System;
 
+fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
+    for (component, style) in ls_colors.style_for_path_components(path) {
+        let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
+        write!(handle, "{}", ansi_style.paint(component.to_string_lossy()))?;
+    }
+    writeln!(handle)?;
+
+    Ok(())
+}
+
 fn run() -> io::Result<()> {
     let ls_colors = LsColors::from_env().unwrap_or_default();
 
-    let stdin = io::stdin();
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut buf = vec![];
-    while let Some(size) = stdin.lock().read_until(b'\n', &mut buf).ok() {
-        if size == 0 {
-            break;
+    let mut args = env::args();
+
+    if args.len() >= 2 {
+        // Skip program name
+        args.next();
+
+        for arg in args {
+            print_path(&mut stdout, &ls_colors, &arg)?;
         }
+    } else {
+        let stdin = io::stdin();
+        let mut buf = vec![];
+        while let Some(size) = stdin.lock().read_until(b'\n', &mut buf).ok() {
+            if size == 0 {
+                break;
+            }
 
-        let path_str = String::from_utf8_lossy(&buf[..(buf.len() - 1)]);
+            let path_str = String::from_utf8_lossy(&buf[..(buf.len() - 1)]);
 
-        for (component, style) in ls_colors.style_for_path_components(path_str.as_ref()) {
-            let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
-            write!(stdout, "{}", ansi_style.paint(component.to_string_lossy()))?;
+            print_path(&mut stdout, &ls_colors, path_str.as_ref())?;
+
+            buf.clear();
         }
-        writeln!(stdout)?;
-
-        buf.clear();
     }
 
     Ok(())
