@@ -183,7 +183,7 @@ impl LsColors {
     }
 
     /// Get ANSI styles for each component of a given path. Components already
-    /// include the patj separator symbol, if required. For a path like
+    /// include the path separator symbol, if required. For a path like
     /// `foo/bar/test.md`, this would return three pairs for the components
     /// `foo/`, `bar/` and `test.md` together with their respective styles.
     pub fn style_for_path_components<P: AsRef<Path>>(
@@ -225,11 +225,11 @@ impl LsColors {
 #[cfg(test)]
 mod tests {
     use crate::style::{Color, FontStyle};
-    use crate::{LsColors, LS_COLORS_DEFAULT};
+    use crate::LsColors;
 
     #[test]
     fn basic_usage() {
-        let lscolors = LsColors::from_string(LS_COLORS_DEFAULT);
+        let lscolors = LsColors::default();
 
         let style_dir = lscolors.directory.clone().unwrap();
         assert_eq!(FontStyle::bold(), style_dir.font_style);
