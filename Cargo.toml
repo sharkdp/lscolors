@@ -20,6 +20,9 @@ authors = ["David Peter <mail@david-peter.de>"]
 [dependencies]
 ansi_term = { version = "0.11", optional = true }
 
+[dev-dependencies]
+tempdir = "0.3"
+
 [features]
 default = ["ansi_term"]
 
