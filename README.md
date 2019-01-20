@@ -39,3 +39,11 @@ Licensed under either of
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
+
+## References
+
+Information about the `LS_COLORS` environment variable is sparse. Here is a short list of useful references:
+
+* [`LS_COLORS` implementation in the GNU coreutils version of `ls`](https://github.com/coreutils/coreutils/blob/17983b2cb3bccbb4fa69691178caddd99269bda9/src/ls.c#L2507-L2647) (the reference implementation)
+* [`LS_COLORS` implementation in `bfs` by @tavianator](https://github.com/tavianator/bfs/blob/2d3b03183c9f1cdb685977f349bf4bbc74a2038d/color.c#L308)
+* [The `DIR_COLORS(5)` man page](https://linux.die.net/man/5/dir_colors)
