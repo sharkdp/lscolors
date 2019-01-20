@@ -224,8 +224,11 @@ impl LsColors {
 
 #[cfg(test)]
 mod tests {
-    use crate::style::{Color, FontStyle};
+    use crate::style::{Color, FontStyle, Style};
     use crate::LsColors;
+
+    use std::fs::File;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn basic_usage() {
@@ -274,33 +277,40 @@ mod tests {
         assert_eq!(None, style_artifact.background);
     }
 
+    fn temp_dir() -> tempdir::TempDir {
+        tempdir::TempDir::new("lscolors-test").expect("temporary directory")
+    }
+
+    fn create_file<P: AsRef<Path>>(path: P) -> PathBuf {
+        File::create(&path).expect("temporary file");
+        path.as_ref().to_path_buf()
+    }
+
+    fn get_default_style<P: AsRef<Path>>(path: P) -> Option<Style> {
+        let lscolors = LsColors::default();
+        lscolors.style_for_path(path).cloned()
+    }
+
     #[test]
     fn style_for_directory() {
-        let tmp_dir = tempdir::TempDir::new("lscolors-test").expect("temporary directory");
-        let lscolors = LsColors::default();
-        let style = lscolors.style_for_path(tmp_dir.path()).unwrap();
+        let tmp_dir = temp_dir();
+        let style = get_default_style(tmp_dir.path()).unwrap();
         assert_eq!(Some(Color::Blue), style.foreground);
     }
 
     #[test]
     fn style_for_file() {
-        use std::fs::File;
-        let tmp_dir = tempdir::TempDir::new("lscolors-test").expect("temporary directory");
-        let tmp_file_path = tmp_dir.path().join("test-file");
-        let _tmp_file = File::create(&tmp_file_path).expect("temporary file");
-        let lscolors = LsColors::default();
-        let style = lscolors.style_for_path(tmp_file_path);
+        let tmp_dir = temp_dir();
+        let tmp_file_path = create_file(tmp_dir.path().join("test-file"));
+        let style = get_default_style(tmp_file_path);
         assert_eq!(None, style);
     }
 
     #[test]
     fn style_for_symlink() {
-        use std::fs::File;
         let tmp_dir = tempdir::TempDir::new("lscolors-test").expect("temporary directory");
 
-        let tmp_file_path = tmp_dir.path().join("test-file");
-        let _tmp_file = File::create(&tmp_file_path).expect("temporary file");
-
+        let tmp_file_path = create_file(tmp_dir.path().join("test-file"));
         let tmp_symlink_path = tmp_dir.path().join("test-symlink");
 
         #[cfg(unix)]
@@ -310,8 +320,7 @@ mod tests {
         std::os::windows::fs::symlink_file(&tmp_file_path, &tmp_symlink_path)
             .expect("temporary symlink");
 
-        let lscolors = LsColors::default();
-        let style = lscolors.style_for_path(tmp_symlink_path).unwrap();
+        let style = get_default_style(tmp_symlink_path).unwrap();
         assert_eq!(Some(Color::Cyan), style.foreground);
     }
 }
