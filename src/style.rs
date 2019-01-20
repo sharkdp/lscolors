@@ -97,8 +97,8 @@ pub struct Style {
 impl Style {
     /// Parse ANSI escape sequences like `38;2;255;0;100;1;4` (pink, bold, underlined).
     pub fn from_ansi_sequence(code: &str) -> Option<Style> {
-        if code.is_empty() {
-            return Some(Style::default());
+        if code.is_empty() || code == "0" || code == "00" {
+            return None;
         }
 
         let mut parts: VecDeque<u8> = code
@@ -217,11 +217,6 @@ mod tests {
             Some(Color::Black),
             FontStyle::default(),
         );
-    }
-
-    #[test]
-    fn parse_empty() {
-        assert_eq!(Some(Style::default()), Style::from_ansi_sequence(""));
     }
 
     #[test]

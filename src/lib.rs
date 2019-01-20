@@ -454,12 +454,23 @@ mod tests {
     fn style_for_missing_file() {
         let lscolors1 = LsColors::from_string("mi=01:or=33;44");
 
-        let style_missing = lscolors1.style_for_indicator(Indicator::MissingFile).unwrap();
+        let style_missing = lscolors1
+            .style_for_indicator(Indicator::MissingFile)
+            .unwrap();
         assert_eq!(FontStyle::bold(), style_missing.font_style);
 
         let lscolors2 = LsColors::from_string("or=33;44");
 
-        let style_missing = lscolors2.style_for_indicator(Indicator::MissingFile).unwrap();
+        let style_missing = lscolors2
+            .style_for_indicator(Indicator::MissingFile)
+            .unwrap();
+        assert_eq!(Some(Color::Yellow), style_missing.foreground);
+
+        let lscolors3 = LsColors::from_string("or=33;44:mi=00");
+
+        let style_missing = lscolors3
+            .style_for_indicator(Indicator::MissingFile)
+            .unwrap();
         assert_eq!(Some(Color::Yellow), style_missing.foreground);
     }
 }
