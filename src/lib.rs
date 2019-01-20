@@ -94,7 +94,7 @@ impl LsColors {
                             "di" => lscolors.directory = Some(style),
                             "ln" => lscolors.symlink = Some(style),
                             "ex" => lscolors.executable = Some(style),
-                            "or" | "mi" => lscolors.broken_symlink = Some(style),
+                            "or" => lscolors.broken_symlink = Some(style),
                             "pi" => lscolors.fifo = Some(style),
                             "so" => lscolors.socket = Some(style),
                             "bd" => lscolors.block_device = Some(style),
@@ -322,5 +322,23 @@ mod tests {
 
         let style = get_default_style(tmp_symlink_path).unwrap();
         assert_eq!(Some(Color::Cyan), style.foreground);
+    }
+
+    #[test]
+    fn style_for_broken_symlink() {
+        let tmp_dir = temp_dir();
+
+        let tmp_file_path = tmp_dir.path().join("non-existing-file");
+        let tmp_symlink_path = tmp_dir.path().join("broken-symlink");
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&tmp_file_path, &tmp_symlink_path).expect("temporary symlink");
+
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(&tmp_file_path, &tmp_symlink_path)
+            .expect("temporary symlink");
+
+        let style = get_default_style(tmp_symlink_path).unwrap();
+        assert_eq!(Some(Color::Red), style.foreground);
     }
 }
