@@ -399,6 +399,16 @@ mod tests {
         lscolors.style_for_path(path).cloned()
     }
 
+    #[cfg(unix)]
+    fn create_symlink<P: AsRef<Path>>(from: P, to: P) {
+        std::os::unix::fs::symlink(from, to).expect("temporary symlink");
+    }
+
+    #[cfg(windows)]
+    fn create_symlink<P: AsRef<Path>>(from: P, to: P) {
+        std::os::windows::fs::symlink_file(from, to).expect("temporary symlink");
+    }
+
     #[test]
     fn style_for_directory() {
         let tmp_dir = temp_dir();
@@ -417,16 +427,10 @@ mod tests {
     #[test]
     fn style_for_symlink() {
         let tmp_dir = temp_dir();
-
         let tmp_file_path = create_file(tmp_dir.path().join("test-file"));
         let tmp_symlink_path = tmp_dir.path().join("test-symlink");
 
-        #[cfg(unix)]
-        std::os::unix::fs::symlink(&tmp_file_path, &tmp_symlink_path).expect("temporary symlink");
-
-        #[cfg(windows)]
-        std::os::windows::fs::symlink_file(&tmp_file_path, &tmp_symlink_path)
-            .expect("temporary symlink");
+        create_symlink(&tmp_file_path, &tmp_symlink_path);
 
         let style = get_default_style(tmp_symlink_path).unwrap();
         assert_eq!(Some(Color::Cyan), style.foreground);
@@ -435,16 +439,10 @@ mod tests {
     #[test]
     fn style_for_broken_symlink() {
         let tmp_dir = temp_dir();
-
         let tmp_file_path = tmp_dir.path().join("non-existing-file");
         let tmp_symlink_path = tmp_dir.path().join("broken-symlink");
 
-        #[cfg(unix)]
-        std::os::unix::fs::symlink(&tmp_file_path, &tmp_symlink_path).expect("temporary symlink");
-
-        #[cfg(windows)]
-        std::os::windows::fs::symlink_file(&tmp_file_path, &tmp_symlink_path)
-            .expect("temporary symlink");
+        create_symlink(&tmp_file_path, &tmp_symlink_path);
 
         let style = get_default_style(tmp_symlink_path).unwrap();
         assert_eq!(Some(Color::Red), style.foreground);
