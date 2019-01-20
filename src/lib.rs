@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn style_for_symlink() {
-        let tmp_dir = tempdir::TempDir::new("lscolors-test").expect("temporary directory");
+        let tmp_dir = temp_dir();
 
         let tmp_file_path = create_file(tmp_dir.path().join("test-file"));
         let tmp_symlink_path = tmp_dir.path().join("test-symlink");
