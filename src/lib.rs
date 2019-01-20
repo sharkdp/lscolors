@@ -17,31 +17,134 @@
 mod fs;
 pub mod style;
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
 pub use crate::style::{Color, FontStyle, Style};
 
-type FileEnding = String;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Indicator {
+    /// `no`: Normal (non-filename) text
+    Normal,
+
+    /// `fi`: Regular file
+    RegularFile,
+
+    /// `di`: Directory
+    Directory,
+
+    /// `ln`: Symbolic link
+    SymbolicLink,
+
+    /// `pi`: Named pipe or FIFO
+    FIFO,
+
+    /// `so`: Socket
+    Socket,
+
+    /// `do`: Door (IPC connection to another program)
+    Door,
+
+    /// `bd`: Block-oriented device
+    BlockDevice,
+
+    /// `cd`: Character-oriented device
+    CharacterDevice,
+
+    /// `or`: A broken symbolic link
+    OrphanedSymbolicLink,
+
+    /// `su`: A file that is setuid (`u+s`)
+    Setuid,
+
+    /// `sg`: A file that is setgid (`g+s`)
+    Setgid,
+
+    /// `st`: A directory that is sticky and other-writable (`+t`, `o+w`)
+    Sticky,
+
+    /// `ow`: A directory that is not sticky and other-writeable (`o+w`)
+    OtherWritable,
+
+    /// `tw`: A directory that is sticky and other-writable (`+t`, `o+w`)
+    StickyAndOtherWritable,
+
+    /// `ex`: Executable file
+    ExecutableFile,
+
+    /// `mi`: Missing file
+    MissingFile,
+
+    /// `ca`: File with capabilities set
+    Capabilities,
+
+    /// `mh`: File with multiple hard links
+    MultipleHardLinks,
+
+    /// `lc`: Code that is printed before the color sequence
+    LeftCode,
+
+    /// `rc`: Code that is printed after the color sequence
+    RightCode,
+
+    /// `ec`: End code
+    EndCode,
+
+    /// `rs`: Code to reset to ordinary colors
+    Reset,
+
+    /// `cl`: Code to clear to the end of the line
+    ClearLine,
+}
+
+impl Indicator {
+    pub fn from(indicator: &str) -> Option<Indicator> {
+        use Indicator::*;
+
+        match indicator {
+            "no" => Some(Normal),
+            "fi" => Some(RegularFile),
+            "di" => Some(Directory),
+            "ln" => Some(SymbolicLink),
+            "pi" => Some(FIFO),
+            "so" => Some(Socket),
+            "do" => Some(Door),
+            "bd" => Some(BlockDevice),
+            "cd" => Some(CharacterDevice),
+            "or" => Some(OrphanedSymbolicLink),
+            "su" => Some(Setuid),
+            "sg" => Some(Setgid),
+            "st" => Some(Sticky),
+            "ow" => Some(OtherWritable),
+            "tw" => Some(StickyAndOtherWritable),
+            "ex" => Some(ExecutableFile),
+            "mi" => Some(MissingFile),
+            "ca" => Some(Capabilities),
+            "mh" => Some(MultipleHardLinks),
+            "lc" => Some(LeftCode),
+            "rc" => Some(RightCode),
+            "ec" => Some(EndCode),
+            "rs" => Some(Reset),
+            "cl" => Some(ClearLine),
+            _ => None,
+        }
+    }
+}
+
+type FileNameSuffix = String;
 
 const LS_COLORS_DEFAULT: &str = "rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:";
 
 /// Holds information about how different file system entries should be colorized / styled.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct LsColors {
-    // Note: you might expect to see a `HashMap` here, but we need to
-    // preserve the exact order of the mapping in order to be consistent
-    // with `ls`.
-    mapping: Vec<(FileEnding, Style)>,
-    directory: Option<Style>,
-    symlink: Option<Style>,
-    broken_symlink: Option<Style>,
-    executable: Option<Style>,
-    fifo: Option<Style>,
-    socket: Option<Style>,
-    block_device: Option<Style>,
-    char_device: Option<Style>,
+    indicator_mapping: HashMap<Indicator, Style>,
+
+    // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
+    // preserve the exact order of the mapping in order to be consistent with `ls`.
+    suffix_mapping: Vec<(FileNameSuffix, Style)>,
 }
 
 impl Default for LsColors {
@@ -56,15 +159,8 @@ impl LsColors {
     /// Construct an empty [`LsColors`](struct.LsColors.html) instance with no pre-defined styles.
     pub fn empty() -> Self {
         LsColors {
-            mapping: vec![],
-            directory: None,
-            symlink: None,
-            broken_symlink: None,
-            executable: None,
-            fifo: None,
-            socket: None,
-            block_device: None,
-            char_device: None,
+            indicator_mapping: HashMap::new(),
+            suffix_mapping: vec![],
         }
     }
 
@@ -87,20 +183,10 @@ impl LsColors {
                 if let Some(style) = Style::from_ansi_sequence(ansi_style) {
                     if entry.starts_with('*') {
                         lscolors
-                            .mapping
+                            .suffix_mapping
                             .push((entry[1..].to_string().to_ascii_lowercase(), style));
-                    } else {
-                        match *entry {
-                            "di" => lscolors.directory = Some(style),
-                            "ln" => lscolors.symlink = Some(style),
-                            "ex" => lscolors.executable = Some(style),
-                            "or" => lscolors.broken_symlink = Some(style),
-                            "pi" => lscolors.fifo = Some(style),
-                            "so" => lscolors.socket = Some(style),
-                            "bd" => lscolors.block_device = Some(style),
-                            "cd" => lscolors.char_device = Some(style),
-                            _ => {}
-                        }
+                    } else if let Some(indicator) = Indicator::from(entry) {
+                        lscolors.indicator_mapping.insert(indicator, style);
                     }
                 }
             }
@@ -129,15 +215,15 @@ impl LsColors {
     ) -> Option<&Style> {
         if let Some(metadata) = metadata {
             if metadata.is_dir() {
-                return self.directory.as_ref();
+                return self.style_for_indicator(Indicator::Directory);
             }
 
             if metadata.file_type().is_symlink() {
                 // This works because `Path::exists` traverses symlinks.
                 if path.as_ref().exists() {
-                    return self.symlink.as_ref();
+                    return self.style_for_indicator(Indicator::SymbolicLink);
                 } else {
-                    return self.broken_symlink.as_ref();
+                    return self.style_for_indicator(Indicator::OrphanedSymbolicLink);
                 }
             }
 
@@ -147,21 +233,21 @@ impl LsColors {
 
                 let filetype = metadata.file_type();
                 if filetype.is_fifo() {
-                    return self.fifo.as_ref();
+                    return self.style_for_indicator(Indicator::FIFO);
                 }
                 if filetype.is_socket() {
-                    return self.socket.as_ref();
+                    return self.style_for_indicator(Indicator::Socket);
                 }
                 if filetype.is_block_device() {
-                    return self.block_device.as_ref();
+                    return self.style_for_indicator(Indicator::BlockDevice);
                 }
                 if filetype.is_char_device() {
-                    return self.char_device.as_ref();
+                    return self.style_for_indicator(Indicator::CharacterDevice);
                 }
             }
 
             if crate::fs::is_executable(&metadata) {
-                return self.executable.as_ref();
+                return self.style_for_indicator(Indicator::ExecutableFile);
             }
         }
 
@@ -171,10 +257,10 @@ impl LsColors {
 
         // We need to traverse LS_COLORS from back to front
         // to be consistent with `ls`:
-        for (file_ending, style) in self.mapping.iter().rev() {
+        for (suffix, style) in self.suffix_mapping.iter().rev() {
             // Note: For some reason, 'ends_with' is much
             // slower if we omit `.as_str()` here:
-            if filename.ends_with(file_ending.as_str()) {
+            if filename.ends_with(suffix.as_str()) {
                 return Some(style);
             }
         }
@@ -220,12 +306,28 @@ impl LsColors {
 
         styled_components
     }
+
+    /// Get the ANSI style for a certain `Indicator` (regular file, directory, symlink, ...). Note
+    /// that this function implements a fallback logic for some of the indicators (just like `ls`).
+    /// For example, the style for `mi` (missing file) falls back to `or` (orphaned symbolic link)
+    /// if it has not been specified explicitly.
+    pub fn style_for_indicator(&self, indicator: Indicator) -> Option<&Style> {
+        use Indicator::*;
+
+        match indicator {
+            MissingFile => self
+                .indicator_mapping
+                .get(&MissingFile)
+                .or_else(|| self.indicator_mapping.get(&OrphanedSymbolicLink)),
+            _ => self.indicator_mapping.get(&indicator),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::style::{Color, FontStyle, Style};
-    use crate::LsColors;
+    use crate::{Indicator, LsColors};
 
     use std::fs::File;
     use std::path::{Path, PathBuf};
@@ -234,12 +336,18 @@ mod tests {
     fn basic_usage() {
         let lscolors = LsColors::default();
 
-        let style_dir = lscolors.directory.clone().unwrap();
+        let style_dir = lscolors
+            .style_for_indicator(Indicator::Directory)
+            .clone()
+            .unwrap();
         assert_eq!(FontStyle::bold(), style_dir.font_style);
         assert_eq!(Some(Color::Blue), style_dir.foreground);
         assert_eq!(None, style_dir.background);
 
-        let style_symlink = lscolors.symlink.clone().unwrap();
+        let style_symlink = lscolors
+            .style_for_indicator(Indicator::SymbolicLink)
+            .clone()
+            .unwrap();
         assert_eq!(FontStyle::bold(), style_symlink.font_style);
         assert_eq!(Some(Color::Cyan), style_symlink.foreground);
         assert_eq!(None, style_symlink.background);
