@@ -1,12 +1,8 @@
-use std::alloc::System;
 use std::env;
 use std::io;
 use std::io::prelude::*;
 
 use lscolors::{LsColors, Style};
-
-#[global_allocator]
-static A: System = System;
 
 fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
     for (component, style) in ls_colors.style_for_path_components(path) {
