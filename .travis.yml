@@ -46,7 +46,7 @@ install:
 script:
   # Incorporate TARGET env var to the build and test process
   - cargo build --target $TARGET --verbose
-  - cargo test --target $TARGET --verbose
+  - RUST_BACKTRACE=1 cargo test --target $TARGET --verbose
   - find . -maxdepth 3 | cargo run
 
 before_deploy:
