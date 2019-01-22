@@ -424,11 +424,11 @@ mod tests {
     }
 
     #[cfg(windows)]
-    fn create_symlink<P: AsRef<Path>>(from: P, to: P) {
-        if to.as_ref().is_dir() {
-            std::os::windows::fs::symlink_dir(from, to).expect("temporary symlink");
+    fn create_symlink<P: AsRef<Path>>(src: P, dst: P) {
+        if src.as_ref().is_dir() {
+            std::os::windows::fs::symlink_dir(src, dst).expect("temporary symlink");
         } else {
-            std::os::windows::fs::symlink_file(from, to).expect("temporary symlink");
+            std::os::windows::fs::symlink_file(src, dst).expect("temporary symlink");
         }
     }
 
@@ -522,7 +522,10 @@ mod tests {
         let mut expected_symlink_name = OsString::from("test-symlink");
         expected_symlink_name.push(std::path::MAIN_SEPARATOR.to_string());
         assert_eq!(expected_symlink_name, c_symlink);
-        assert_eq!(Some(Color::Magenta), style_symlink.cloned().and_then(|style| style.foreground));
+        assert_eq!(
+            Some(Color::Magenta),
+            style_symlink.cloned().and_then(|style| style.foreground)
+        );
 
         let (_, style_dir) = components.pop().unwrap();
         assert_eq!(Some(Color::Blue), style_dir.unwrap().foreground);
