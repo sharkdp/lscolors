@@ -101,33 +101,31 @@ pub enum Indicator {
 
 impl Indicator {
     pub fn from(indicator: &str) -> Option<Indicator> {
-        use Indicator::*;
-
         match indicator {
-            "no" => Some(Normal),
-            "fi" => Some(RegularFile),
-            "di" => Some(Directory),
-            "ln" => Some(SymbolicLink),
-            "pi" => Some(FIFO),
-            "so" => Some(Socket),
-            "do" => Some(Door),
-            "bd" => Some(BlockDevice),
-            "cd" => Some(CharacterDevice),
-            "or" => Some(OrphanedSymbolicLink),
-            "su" => Some(Setuid),
-            "sg" => Some(Setgid),
-            "st" => Some(Sticky),
-            "ow" => Some(OtherWritable),
-            "tw" => Some(StickyAndOtherWritable),
-            "ex" => Some(ExecutableFile),
-            "mi" => Some(MissingFile),
-            "ca" => Some(Capabilities),
-            "mh" => Some(MultipleHardLinks),
-            "lc" => Some(LeftCode),
-            "rc" => Some(RightCode),
-            "ec" => Some(EndCode),
-            "rs" => Some(Reset),
-            "cl" => Some(ClearLine),
+            "no" => Some(Indicator::Normal),
+            "fi" => Some(Indicator::RegularFile),
+            "di" => Some(Indicator::Directory),
+            "ln" => Some(Indicator::SymbolicLink),
+            "pi" => Some(Indicator::FIFO),
+            "so" => Some(Indicator::Socket),
+            "do" => Some(Indicator::Door),
+            "bd" => Some(Indicator::BlockDevice),
+            "cd" => Some(Indicator::CharacterDevice),
+            "or" => Some(Indicator::OrphanedSymbolicLink),
+            "su" => Some(Indicator::Setuid),
+            "sg" => Some(Indicator::Setgid),
+            "st" => Some(Indicator::Sticky),
+            "ow" => Some(Indicator::OtherWritable),
+            "tw" => Some(Indicator::StickyAndOtherWritable),
+            "ex" => Some(Indicator::ExecutableFile),
+            "mi" => Some(Indicator::MissingFile),
+            "ca" => Some(Indicator::Capabilities),
+            "mh" => Some(Indicator::MultipleHardLinks),
+            "lc" => Some(Indicator::LeftCode),
+            "rc" => Some(Indicator::RightCode),
+            "ec" => Some(Indicator::EndCode),
+            "rs" => Some(Indicator::Reset),
+            "cl" => Some(Indicator::ClearLine),
             _ => None,
         }
     }
@@ -326,13 +324,11 @@ impl LsColors {
     /// For example, the style for `mi` (missing file) falls back to `or` (orphaned symbolic link)
     /// if it has not been specified explicitly.
     pub fn style_for_indicator(&self, indicator: Indicator) -> Option<&Style> {
-        use Indicator::*;
-
         match indicator {
-            MissingFile => self
+            Indicator::MissingFile => self
                 .indicator_mapping
-                .get(&MissingFile)
-                .or_else(|| self.indicator_mapping.get(&OrphanedSymbolicLink)),
+                .get(&Indicator::MissingFile)
+                .or_else(|| self.indicator_mapping.get(&Indicator::OrphanedSymbolicLink)),
             _ => self.indicator_mapping.get(&indicator),
         }
     }
