@@ -34,6 +34,9 @@ can be used to colorize the output of other commands:
 > rg foo -l | lscolors
 ```
 
+You can install it by running `cargo install lscolors` or by downloading one
+of the prebuilt binaries from the [release page](https://github.com/sharkdp/lscolors/releases).
+
 ## License
 
 Licensed under either of
