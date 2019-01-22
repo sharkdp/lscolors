@@ -15,7 +15,7 @@ use lscolors::{LsColors, Style};
 
 let lscolors = LsColors::from_env().unwrap_or_default();
 
-let path = "some/folder/archive.zip";
+let path = "some/folder/test.tar.gz";
 let style = lscolors.style_for_path(path);
 
 // If you want to use `ansi_term`:
