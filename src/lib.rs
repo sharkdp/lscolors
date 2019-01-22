@@ -497,6 +497,8 @@ mod tests {
 
     #[test]
     fn style_for_path_components() {
+        use std::ffi::OsString;
+
         let tmp_root = temp_dir();
         let tmp_dir = create_dir(tmp_root.path().join("test-dir"));
         create_file(tmp_root.path().join("test-file.png"));
@@ -517,7 +519,9 @@ mod tests {
         assert_eq!(Some(Color::Cyan), style_file.unwrap().foreground);
 
         let (c_symlink, style_symlink) = components.pop().unwrap();
-        assert!(c_symlink.to_str().unwrap().starts_with("test-symlink"));
+        let mut expected_symlink_name = OsString::from("test-symlink");
+        expected_symlink_name.push(std::path::MAIN_SEPARATOR.to_string());
+        assert_eq!(expected_symlink_name, c_symlink);
         assert_eq!(Some(Color::Magenta), style_symlink.unwrap().foreground);
 
         let (_, style_dir) = components.pop().unwrap();
