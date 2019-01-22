@@ -329,7 +329,7 @@ mod tests {
     use crate::style::{Color, FontStyle, Style};
     use crate::{Indicator, LsColors};
 
-    use std::fs::File;
+    use std::fs::{self, File};
     use std::path::{Path, PathBuf};
 
     #[test]
@@ -394,6 +394,11 @@ mod tests {
         path.as_ref().to_path_buf()
     }
 
+    fn create_dir<P: AsRef<Path>>(path: P) -> PathBuf {
+        fs::create_dir(&path).expect("temporary directory");
+        path.as_ref().to_path_buf()
+    }
+
     fn get_default_style<P: AsRef<Path>>(path: P) -> Option<Style> {
         let lscolors = LsColors::default();
         lscolors.style_for_path(path).cloned()
@@ -406,7 +411,11 @@ mod tests {
 
     #[cfg(windows)]
     fn create_symlink<P: AsRef<Path>>(from: P, to: P) {
-        std::os::windows::fs::symlink_file(from, to).expect("temporary symlink");
+        if to.as_ref().is_dir() {
+            std::os::windows::fs::symlink_dir(from, to).expect("temporary symlink");
+        } else {
+            std::os::windows::fs::symlink_file(from, to).expect("temporary symlink");
+        }
     }
 
     #[test]
@@ -470,5 +479,32 @@ mod tests {
             .style_for_indicator(Indicator::MissingFile)
             .unwrap();
         assert_eq!(Some(Color::Yellow), style_missing.foreground);
+    }
+
+    #[test]
+    fn style_for_path_components() {
+        let tmp_root = temp_dir();
+        let tmp_dir = create_dir(tmp_root.path().join("test-dir"));
+        create_file(tmp_root.path().join("test-file.png"));
+
+        let tmp_symlink = tmp_root.path().join("test-symlink");
+        create_symlink(&tmp_dir, &tmp_symlink);
+
+        let path_via_symlink = tmp_symlink.join("test-file.png");
+
+        let lscolors = LsColors::from_string("di=34:ln=35:*.png=36");
+
+        let mut components = lscolors.style_for_path_components(path_via_symlink);
+
+        let (c_file, style_file) = components.pop().unwrap();
+        assert_eq!("test-file.png", c_file);
+        assert_eq!(Some(Color::Cyan), style_file.unwrap().foreground);
+
+        let (c_symlink, style_symlink) = components.pop().unwrap();
+        assert_eq!("test-symlink/", c_symlink);
+        assert_eq!(Some(Color::Magenta), style_symlink.unwrap().foreground);
+
+        let (_, style_dir) = components.pop().unwrap();
+        assert_eq!(Some(Color::Blue), style_dir.unwrap().foreground);
     }
 }
