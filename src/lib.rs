@@ -395,8 +395,8 @@ mod tests {
         assert_eq!(None, style_artifact.background);
     }
 
-    fn temp_dir() -> tempdir::TempDir {
-        tempdir::TempDir::new("lscolors-test").expect("temporary directory")
+    fn temp_dir() -> tempfile::TempDir {
+        tempfile::tempdir().expect("temporary directory")
     }
 
     fn create_file<P: AsRef<Path>>(path: P) -> PathBuf {
