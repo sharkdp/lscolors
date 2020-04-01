@@ -187,10 +187,12 @@ pub struct LsColors {
 }
 
 impl Default for LsColors {
-    /// Constructs a default `LsColors` instance with some
-    /// default styles.
+    /// Constructs a default `LsColors` instance with some default styles. See `man dircolors` for
+    /// information about the default styles and colors.
     fn default() -> Self {
-        LsColors::from_string(LS_COLORS_DEFAULT)
+        let mut lscolors = LsColors::empty();
+        lscolors.add_from_string(LS_COLORS_DEFAULT);
+        lscolors
     }
 }
 
@@ -203,7 +205,9 @@ impl LsColors {
         }
     }
 
-    /// Creates a new [`LsColors`](struct.LsColors.html) instance from the `LS_COLORS` environment variable.
+    /// Creates a new [`LsColors`](struct.LsColors.html) instance from the `LS_COLORS` environment
+    /// variable. The basis for this is a default style as constructed via the `Default`
+    /// implementation.
     pub fn from_env() -> Option<Self> {
         env::var("LS_COLORS")
             .ok()
@@ -213,25 +217,26 @@ impl LsColors {
 
     /// Creates a new [`LsColors`](struct.LsColors.html) instance from the given string.
     pub fn from_string(input: &str) -> Self {
-        let mut lscolors = LsColors::empty();
+        let mut lscolors = LsColors::default();
+        lscolors.add_from_string(input);
+        lscolors
+    }
 
+    fn add_from_string(&mut self, input: &str) {
         for entry in input.split(':') {
             let parts: Vec<_> = entry.split('=').collect();
 
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 if let Some(style) = Style::from_ansi_sequence(ansi_style) {
                     if entry.starts_with('*') {
-                        lscolors
-                            .suffix_mapping
+                        self.suffix_mapping
                             .push((entry[1..].to_string().to_ascii_lowercase(), style));
                     } else if let Some(indicator) = Indicator::from(entry) {
-                        lscolors.indicator_mapping.insert(indicator, style);
+                        self.indicator_mapping.insert(indicator, style);
                     }
                 }
             }
         }
-
-        lscolors
     }
 
     /// Get the ANSI style for a given path.
@@ -346,17 +351,13 @@ mod tests {
     fn basic_usage() {
         let lscolors = LsColors::default();
 
-        let style_dir = lscolors
-            .style_for_indicator(Indicator::Directory)
-            .clone()
-            .unwrap();
+        let style_dir = lscolors.style_for_indicator(Indicator::Directory).unwrap();
         assert_eq!(FontStyle::bold(), style_dir.font_style);
         assert_eq!(Some(Color::Blue), style_dir.foreground);
         assert_eq!(None, style_dir.background);
 
         let style_symlink = lscolors
             .style_for_indicator(Indicator::SymbolicLink)
-            .clone()
             .unwrap();
         assert_eq!(FontStyle::bold(), style_symlink.font_style);
         assert_eq!(Some(Color::Cyan), style_symlink.foreground);
@@ -393,6 +394,18 @@ mod tests {
         assert_eq!(FontStyle::bold(), style_artifact.font_style);
         assert_eq!(Some(Color::Magenta), style_artifact.foreground);
         assert_eq!(None, style_artifact.background);
+    }
+
+    #[test]
+    fn default_styles_should_be_preserved() {
+        // Setting an unrelated style should not influence the default
+        // style for "directory" (below)
+        let lscolors = LsColors::from_string("ex=01:");
+
+        let style_dir = lscolors.style_for_indicator(Indicator::Directory).unwrap();
+        assert_eq!(FontStyle::bold(), style_dir.font_style);
+        assert_eq!(Some(Color::Blue), style_dir.foreground);
+        assert_eq!(None, style_dir.background);
     }
 
     fn temp_dir() -> tempfile::TempDir {
