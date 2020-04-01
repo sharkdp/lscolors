@@ -302,6 +302,7 @@ mod tests {
     fn parse_font_style() {
         assert_style("00;31", Some(Color::Red), None, FontStyle::default());
         assert_style("03;34", Some(Color::Blue), None, FontStyle::italic());
+        assert_style("06;34", Some(Color::Blue), None, FontStyle::rapid_blink());
         assert_style("01;36", Some(Color::Cyan), None, FontStyle::bold());
         let italic_and_bold = FontStyle {
             bold: true,
@@ -315,6 +316,12 @@ mod tests {
     fn ignore_unsupported_styles() {
         let style = Style::from_ansi_sequence("14;31").unwrap();
         assert_eq!(Some(Color::Red), style.foreground);
+    }
+
+    #[test]
+    fn support_reset_of_styles() {
+        assert_style("01;31", Some(Color::Red), None, FontStyle::bold());
+        assert_style("01;31;22", Some(Color::Red), None, FontStyle::default());
     }
 
     #[test]
