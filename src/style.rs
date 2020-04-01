@@ -162,7 +162,10 @@ impl Style {
                     }
                 },
                 Some(49) => background = None,
-                Some(_) | None => {
+                Some(_) => {
+                    continue;
+                }
+                None => {
                     break;
                 }
             }
@@ -237,6 +240,12 @@ mod tests {
             underline: false,
         };
         assert_style("01;03", None, None, italic_and_bold);
+    }
+
+    #[test]
+    fn ignore_unsupported_styles() {
+        let style = Style::from_ansi_sequence("14;31").unwrap();
+        assert_eq!(Some(Color::Red), style.foreground);
     }
 
     #[test]
