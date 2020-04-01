@@ -43,45 +43,80 @@ impl Color {
 }
 
 /// Font-style attributes.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FontStyle {
     bold: bool,
+    dimmed: bool, // a.k.a. faint
     italic: bool,
     underline: bool,
-}
-
-impl Default for FontStyle {
-    fn default() -> Self {
-        FontStyle {
-            bold: false,
-            italic: false,
-            underline: false,
-        }
-    }
+    slow_blink: bool,
+    rapid_blink: bool,
+    reverse: bool,       // a.k.a. inverse or reverse video
+    hidden: bool,        // a.k.a. conceal
+    strikethrough: bool, // a.k.a. crossed-out
 }
 
 impl FontStyle {
     pub fn bold() -> Self {
         FontStyle {
             bold: true,
-            italic: false,
-            underline: false,
+            ..Default::default()
+        }
+    }
+
+    pub fn dimmed() -> Self {
+        FontStyle {
+            dimmed: true,
+            ..Default::default()
         }
     }
 
     pub fn italic() -> Self {
         FontStyle {
-            bold: false,
             italic: true,
-            underline: false,
+            ..Default::default()
         }
     }
 
     pub fn underline() -> Self {
         FontStyle {
-            bold: false,
-            italic: false,
             underline: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn slow_blink() -> Self {
+        FontStyle {
+            slow_blink: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn rapid_blink() -> Self {
+        FontStyle {
+            rapid_blink: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn reverse() -> Self {
+        FontStyle {
+            reverse: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn hidden() -> Self {
+        FontStyle {
+            hidden: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn strikethrough() -> Self {
+        FontStyle {
+            strikethrough: true,
+            ..Default::default()
         }
     }
 }
@@ -114,8 +149,37 @@ impl Style {
             match parts.pop_front() {
                 Some(0) => font_style = FontStyle::default(),
                 Some(1) => font_style.bold = true,
+                Some(2) => font_style.dimmed = true,
                 Some(3) => font_style.italic = true,
                 Some(4) => font_style.underline = true,
+                Some(5) => font_style.slow_blink = true,
+                Some(6) => font_style.rapid_blink = true,
+                Some(7) => font_style.reverse = true,
+                Some(8) => font_style.hidden = true,
+                Some(9) => font_style.strikethrough = true,
+                Some(22) => {
+                    font_style.bold = false;
+                    font_style.dimmed = false;
+                }
+                Some(23) => {
+                    font_style.italic = false;
+                }
+                Some(24) => {
+                    font_style.underline = false;
+                }
+                Some(25) => {
+                    font_style.slow_blink = false;
+                    font_style.rapid_blink = false;
+                }
+                Some(27) => {
+                    font_style.reverse = false;
+                }
+                Some(28) => {
+                    font_style.hidden = false;
+                }
+                Some(29) => {
+                    font_style.strikethrough = false;
+                }
                 Some(30) => foreground = Some(Color::Black),
                 Some(31) => foreground = Some(Color::Red),
                 Some(32) => foreground = Some(Color::Green),
@@ -187,8 +251,13 @@ impl Style {
         ansi_style.background = self.background.as_ref().map(Color::to_ansi_term_color);
 
         ansi_style.is_bold = self.font_style.bold;
+        ansi_style.is_dimmed = self.font_style.dimmed;
         ansi_style.is_italic = self.font_style.italic;
         ansi_style.is_underline = self.font_style.underline;
+        ansi_style.is_blink = self.font_style.rapid_blink || self.font_style.slow_blink;
+        ansi_style.is_reverse = self.font_style.reverse;
+        ansi_style.is_hidden = self.font_style.hidden;
+        ansi_style.is_strikethrough = self.font_style.strikethrough;
 
         ansi_style
     }
@@ -237,7 +306,7 @@ mod tests {
         let italic_and_bold = FontStyle {
             bold: true,
             italic: true,
-            underline: false,
+            ..Default::default()
         };
         assert_style("01;03", None, None, italic_and_bold);
     }
