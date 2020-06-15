@@ -45,15 +45,15 @@ impl Color {
 /// Font-style attributes.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FontStyle {
-    bold: bool,
-    dimmed: bool, // a.k.a. faint
-    italic: bool,
-    underline: bool,
-    slow_blink: bool,
-    rapid_blink: bool,
-    reverse: bool,       // a.k.a. inverse or reverse video
-    hidden: bool,        // a.k.a. conceal
-    strikethrough: bool, // a.k.a. crossed-out
+    pub bold: bool,
+    pub dimmed: bool, // a.k.a. faint
+    pub italic: bool,
+    pub underline: bool,
+    pub slow_blink: bool,
+    pub rapid_blink: bool,
+    pub reverse: bool,       // a.k.a. inverse or reverse video
+    pub hidden: bool,        // a.k.a. conceal
+    pub strikethrough: bool, // a.k.a. crossed-out
 }
 
 impl FontStyle {
