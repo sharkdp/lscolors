@@ -7,6 +7,9 @@ use std::collections::VecDeque;
 #[cfg(ansi_term)]
 use ansi_term;
 
+#[cfg(crossterm)]
+use crossterm;
+
 /// A `Color` can be one of the pre-defined ANSI colors (`Red`, `Green`, ..),
 /// a 8-bit ANSI color (`Fixed(u8)`) or a 24-bit color (`RGB(u8, u8, u8)`).
 #[derive(Debug, Clone, PartialEq)]
@@ -38,6 +41,23 @@ impl Color {
             Color::Magenta => ansi_term::Color::Purple,
             Color::Cyan => ansi_term::Color::Cyan,
             Color::White => ansi_term::Color::White,
+        }
+    }
+
+    /// Convert to a `crossterm::style::Color` (if the `crossterm` feature is enabled).
+    #[cfg(feature = "crossterm")]
+    pub fn to_crossterm_color(&self) -> crossterm::style::Color {
+        match self {
+            Color::RGB(r, g, b) => crossterm::style::Color::RGB { r, g, b },
+            Color::Fixed(n) => crossterm::style::Color::AnsiValue(n),
+            Color::Black => crossterm::style::Color::Black,
+            Color::Red => crossterm::style::Color::Red,
+            Color::Green => crossterm::style::Color::Green,
+            Color::Yellow => crossterm::style::Color::Yellow,
+            Color::Blue => crossterm::style::Color::Blue,
+            Color::Magenta => crossterm::style::Color::Purple,
+            Color::Cyan => crossterm::style::Color::Cyan,
+            Color::White => crossterm::style::Color::White,
         }
     }
 }
@@ -118,6 +138,40 @@ impl FontStyle {
             strikethrough: true,
             ..Default::default()
         }
+    }
+
+    /// Convert to `crossterm::style::Attributes` (if the `crossterm` feature is enabled).
+    #[cfg(feature = "crossterm")]
+    pub fn to_crossterm_attributes(&self) -> crossterm::style::Attributes {
+        let mut attributes = Attributes::default();
+        if self.bold {
+            attributes.set(Attribute::Bold);
+        }
+        if self.dimmed {
+            attributes.set(Attribute::Dim);
+        }
+        if self.italic {
+            attributes.set(Attribute::Italic);
+        }
+        if self.underline {
+            attributes.set(Attribute::Underlined);
+        }
+        if self.slow_blink {
+            attributes.set(Attribute::SlowBlink);
+        }
+        if self.rapid_blink {
+            attributes.set(Attribute::RapidBlink);
+        }
+        if self.reverse {
+            attributes.set(Attribute::Reverse);
+        }
+        if self.hidden {
+            attributes.set(Attribute::Hidden);
+        }
+        if self.strikethrough {
+            attributes.set(Attribute::CrossedOut);
+        }
+        attributes
     }
 }
 
@@ -260,6 +314,16 @@ impl Style {
         ansi_style.is_strikethrough = self.font_style.strikethrough;
 
         ansi_style
+    }
+
+    /// Convert to a `crossterm::style::ContentStyle` (if the `crossterm` feature is enabled).
+    #[cfg(feature = "crossterm")]
+    pub fn to_crossterm_style(&self) -> crossterm::style::ContentStyle {
+        crossterm::style::ContentStyle {
+            foreground_color: self.foreground.as_ref().map(Color::to_crossterm_color),
+            background_color: self.background.as_ref().map(Color::to_crossterm_color),
+            attributes: self.font_style.to_crossterm_attributes(),
+        }
     }
 }
 
