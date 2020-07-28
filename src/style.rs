@@ -48,14 +48,18 @@ impl Color {
     #[cfg(feature = "crossterm")]
     pub fn to_crossterm_color(&self) -> crossterm::style::Color {
         match self {
-            Color::RGB(r, g, b) => crossterm::style::Color::RGB { r, g, b },
-            Color::Fixed(n) => crossterm::style::Color::AnsiValue(n),
+            Color::RGB(r, g, b) => crossterm::style::Color::Rgb {
+                r: *r,
+                g: *g,
+                b: *b,
+            },
+            Color::Fixed(n) => crossterm::style::Color::AnsiValue(*n),
             Color::Black => crossterm::style::Color::Black,
             Color::Red => crossterm::style::Color::Red,
             Color::Green => crossterm::style::Color::Green,
             Color::Yellow => crossterm::style::Color::Yellow,
             Color::Blue => crossterm::style::Color::Blue,
-            Color::Magenta => crossterm::style::Color::Purple,
+            Color::Magenta => crossterm::style::Color::Magenta,
             Color::Cyan => crossterm::style::Color::Cyan,
             Color::White => crossterm::style::Color::White,
         }
@@ -143,33 +147,33 @@ impl FontStyle {
     /// Convert to `crossterm::style::Attributes` (if the `crossterm` feature is enabled).
     #[cfg(feature = "crossterm")]
     pub fn to_crossterm_attributes(&self) -> crossterm::style::Attributes {
-        let mut attributes = Attributes::default();
+        let mut attributes = crossterm::style::Attributes::default();
         if self.bold {
-            attributes.set(Attribute::Bold);
+            attributes.set(crossterm::style::Attribute::Bold);
         }
         if self.dimmed {
-            attributes.set(Attribute::Dim);
+            attributes.set(crossterm::style::Attribute::Dim);
         }
         if self.italic {
-            attributes.set(Attribute::Italic);
+            attributes.set(crossterm::style::Attribute::Italic);
         }
         if self.underline {
-            attributes.set(Attribute::Underlined);
+            attributes.set(crossterm::style::Attribute::Underlined);
         }
         if self.slow_blink {
-            attributes.set(Attribute::SlowBlink);
+            attributes.set(crossterm::style::Attribute::SlowBlink);
         }
         if self.rapid_blink {
-            attributes.set(Attribute::RapidBlink);
+            attributes.set(crossterm::style::Attribute::RapidBlink);
         }
         if self.reverse {
-            attributes.set(Attribute::Reverse);
+            attributes.set(crossterm::style::Attribute::Reverse);
         }
         if self.hidden {
-            attributes.set(Attribute::Hidden);
+            attributes.set(crossterm::style::Attribute::Hidden);
         }
         if self.strikethrough {
-            attributes.set(Attribute::CrossedOut);
+            attributes.set(crossterm::style::Attribute::CrossedOut);
         }
         attributes
     }
