@@ -45,9 +45,18 @@ install:
 
 script:
   # Incorporate TARGET env var to the build and test process
-  - cargo build --target $TARGET --verbose
-  - RUST_BACKTRACE=1 cargo test --target $TARGET --verbose
-  - find . -maxdepth 3 | cargo run
+  - cargo build --no-default-features --target $TARGET --verbose
+  - RUST_BACKTRACE=1 cargo test --no-default-features --target $TARGET --verbose
+  - find . -maxdepth 3 | cargo run --no-default-features
+  - cargo build --features "ansi_term" --target $TARGET --verbose
+  - RUST_BACKTRACE=1 cargo test --features "ansi_term" --target $TARGET --verbose
+  - find . -maxdepth 3 | cargo run --features "ansi_term"
+  - cargo build --no-default-features --features "crossterm" --target $TARGET --verbose
+  - RUST_BACKTRACE=1 cargo test --no-default-features --features "crossterm" --target $TARGET --verbose
+  - find . -maxdepth 3 | cargo run --no-default-features --features "crossterm"
+  - cargo build --features "ansi_term crossterm" --target $TARGET --verbose
+  - RUST_BACKTRACE=1 cargo test --features "ansi_term crossterm" --target $TARGET --verbose
+  - find . -maxdepth 3 | cargo run --features "ansi_term crossterm"
 
 before_deploy:
   - bash ci/before_deploy.bash
