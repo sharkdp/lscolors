@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
@@ -20,27 +21,35 @@ fn run() -> io::Result<()> {
 
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
-
-    let mut args = env::args();
+    let args: Vec<String> = env::args().collect();
 
     if args.len() >= 2 {
-        // Skip program name
-        args.next();
-
-        for arg in args {
-            print_path(&mut stdout, &ls_colors, &arg)?;
+        if args.len() == 2 {
+            let folder = &args[1];
+            let paths = fs::read_dir(folder).expect(&format!("Failed to get folder [{}]", folder));
+            for path in paths {
+                print_path(
+                    &mut stdout,
+                    &ls_colors,
+                    &path.unwrap().file_name().to_str().unwrap(),
+                )?;
+            }
         }
     } else {
         let stdin = io::stdin();
         let mut buf = vec![];
+
         while let Some(size) = stdin.lock().read_until(b'\n', &mut buf).ok() {
             if size == 0 {
                 break;
             }
 
             let path_str = String::from_utf8_lossy(&buf[..(buf.len() - 1)]);
-
-            print_path(&mut stdout, &ls_colors, path_str.as_ref())?;
+            print_path(
+                &mut stdout,
+                &ls_colors,
+                path_str.trim_end_matches('\r').as_ref(),
+            )?;
 
             buf.clear();
         }
