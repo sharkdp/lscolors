@@ -42,11 +42,7 @@ fn run() -> io::Result<()> {
             let path_str = String::from_utf8_lossy(&buf[..(buf.len() - 1)]);
             #[cfg(windows)]
             let path_str = path_str.trim_end_matches('\r');
-            print_path(
-                &mut stdout,
-                &ls_colors,
-                path_str.as_ref(),
-            )?;
+            print_path(&mut stdout, &ls_colors, path_str.as_ref())?;
 
             buf.clear();
         }
