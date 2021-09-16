@@ -256,6 +256,79 @@ impl LsColors {
         self.style_for_path_with_metadata(path, metadata.as_ref())
     }
 
+    /// Check if an indicator has an associated color.
+    fn has_color_for(&self, indicator: Indicator) -> bool {
+        self.indicator_mapping.contains_key(&indicator)
+    }
+
+    /// Get the indicator type for a path with corresponding metadata.
+    fn indicator_for(&self, path: &Path, metadata: Option<&std::fs::Metadata>) -> Indicator {
+        if let Some(metadata) = metadata {
+            let file_type = metadata.file_type();
+
+            if file_type.is_file() {
+                let mode = crate::fs::mode(metadata);
+                let nlink = crate::fs::nlink(metadata);
+
+                if self.has_color_for(Indicator::Setuid) && mode & 0o4000 != 0 {
+                    Indicator::Setuid
+                } else if self.has_color_for(Indicator::Setgid) && mode & 0o2000 != 0 {
+                    Indicator::Setgid
+                } else if self.has_color_for(Indicator::ExecutableFile) && mode & 0o0111 != 0 {
+                    Indicator::ExecutableFile
+                } else if self.has_color_for(Indicator::MultipleHardLinks) && nlink > 1 {
+                    Indicator::MultipleHardLinks
+                } else {
+                    Indicator::RegularFile
+                }
+            } else if file_type.is_dir() {
+                let mode = crate::fs::mode(metadata);
+
+                if self.has_color_for(Indicator::StickyAndOtherWritable) && mode & 0o1002 == 0o1002
+                {
+                    Indicator::StickyAndOtherWritable
+                } else if self.has_color_for(Indicator::OtherWritable) && mode & 0o0002 != 0 {
+                    Indicator::OtherWritable
+                } else if self.has_color_for(Indicator::Sticky) && mode & 0o1000 != 0 {
+                    Indicator::Sticky
+                } else {
+                    Indicator::Directory
+                }
+            } else if file_type.is_symlink() {
+                // This works because `Path::exists` traverses symlinks.
+                if self.has_color_for(Indicator::OrphanedSymbolicLink) && !path.exists() {
+                    return Indicator::OrphanedSymbolicLink;
+                }
+
+                Indicator::SymbolicLink
+            } else {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::FileTypeExt;
+
+                    if file_type.is_fifo() {
+                        return Indicator::FIFO;
+                    }
+                    if file_type.is_socket() {
+                        return Indicator::Socket;
+                    }
+                    if file_type.is_block_device() {
+                        return Indicator::BlockDevice;
+                    }
+                    if file_type.is_char_device() {
+                        return Indicator::CharacterDevice;
+                    }
+                }
+
+                // Treat files of unknown type as errors
+                Indicator::MissingFile
+            }
+        } else {
+            // Default to a regular file, so we still try the suffix map when no metadata is available
+            Indicator::RegularFile
+        }
+    }
+
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
     ///
     /// *Note:* The `Metadata` struct must have been acquired via `Path::symlink_metadata` in
@@ -265,59 +338,25 @@ impl LsColors {
         path: P,
         metadata: Option<&std::fs::Metadata>,
     ) -> Option<&Style> {
-        if let Some(metadata) = metadata {
-            if metadata.is_dir() {
-                return self.style_for_indicator(Indicator::Directory);
-            }
+        let indicator = self.indicator_for(path.as_ref(), metadata);
 
-            if metadata.file_type().is_symlink() {
-                // This works because `Path::exists` traverses symlinks.
-                if path.as_ref().exists() {
-                    return self.style_for_indicator(Indicator::SymbolicLink);
-                } else {
-                    return self.style_for_indicator(Indicator::OrphanedSymbolicLink);
-                }
-            }
+        if indicator == Indicator::RegularFile {
+            // Note: using '.to_str()' here means that filename
+            // matching will not work with invalid-UTF-8 paths.
+            let filename = path.as_ref().file_name()?.to_str()?.to_ascii_lowercase();
 
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::FileTypeExt;
-
-                let filetype = metadata.file_type();
-                if filetype.is_fifo() {
-                    return self.style_for_indicator(Indicator::FIFO);
+            // We need to traverse LS_COLORS from back to front
+            // to be consistent with `ls`:
+            for (suffix, style) in self.suffix_mapping.iter().rev() {
+                // Note: For some reason, 'ends_with' is much
+                // slower if we omit `.as_str()` here:
+                if filename.ends_with(suffix.as_str()) {
+                    return Some(style);
                 }
-                if filetype.is_socket() {
-                    return self.style_for_indicator(Indicator::Socket);
-                }
-                if filetype.is_block_device() {
-                    return self.style_for_indicator(Indicator::BlockDevice);
-                }
-                if filetype.is_char_device() {
-                    return self.style_for_indicator(Indicator::CharacterDevice);
-                }
-            }
-
-            if crate::fs::is_executable(&metadata) {
-                return self.style_for_indicator(Indicator::ExecutableFile);
             }
         }
 
-        // Note: using '.to_str()' here means that filename
-        // matching will not work with invalid-UTF-8 paths.
-        let filename = path.as_ref().file_name()?.to_str()?.to_ascii_lowercase();
-
-        // We need to traverse LS_COLORS from back to front
-        // to be consistent with `ls`:
-        for (suffix, style) in self.suffix_mapping.iter().rev() {
-            // Note: For some reason, 'ends_with' is much
-            // slower if we omit `.as_str()` here:
-            if filename.ends_with(suffix.as_str()) {
-                return Some(style);
-            }
-        }
-
-        None
+        self.style_for_indicator(indicator)
     }
 
     /// Get ANSI styles for each component of a given path. Components already include the path
@@ -337,13 +376,27 @@ impl LsColors {
     /// For example, the style for `mi` (missing file) falls back to `or` (orphaned symbolic link)
     /// if it has not been specified explicitly.
     pub fn style_for_indicator(&self, indicator: Indicator) -> Option<&Style> {
-        match indicator {
-            Indicator::MissingFile => self
-                .indicator_mapping
-                .get(&Indicator::MissingFile)
-                .or_else(|| self.indicator_mapping.get(&Indicator::OrphanedSymbolicLink)),
-            _ => self.indicator_mapping.get(&indicator),
-        }
+        self.indicator_mapping
+            .get(&indicator)
+            .or_else(|| {
+                self.indicator_mapping.get(&match indicator {
+                    Indicator::Setuid
+                    | Indicator::Setgid
+                    | Indicator::ExecutableFile
+                    | Indicator::MultipleHardLinks => Indicator::RegularFile,
+
+                    Indicator::StickyAndOtherWritable
+                    | Indicator::OtherWritable
+                    | Indicator::Sticky => Indicator::Directory,
+
+                    Indicator::OrphanedSymbolicLink => Indicator::SymbolicLink,
+
+                    Indicator::MissingFile => Indicator::OrphanedSymbolicLink,
+
+                    _ => indicator,
+                })
+            })
+            .or_else(|| self.indicator_mapping.get(&Indicator::Normal))
     }
 }
 
@@ -510,6 +563,63 @@ mod tests {
             .style_for_indicator(Indicator::MissingFile)
             .unwrap();
         assert_eq!(Some(Color::Yellow), style_missing.foreground);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn style_for_setid() {
+        use std::fs::{set_permissions, Permissions};
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp_dir = temp_dir();
+        let tmp_file = create_file(tmp_dir.path().join("setid"));
+        let perms = Permissions::from_mode(0o6750);
+        set_permissions(&tmp_file, perms).unwrap();
+
+        let suid_style = get_default_style(&tmp_file).unwrap();
+        assert_eq!(Some(Color::Red), suid_style.background);
+
+        let lscolors = LsColors::from_string("su=0");
+        let sgid_style = lscolors.style_for_path(&tmp_file).unwrap();
+        assert_eq!(Some(Color::Yellow), sgid_style.background);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn style_for_multi_hard_links() {
+        let tmp_dir = temp_dir();
+        let tmp_file = create_file(tmp_dir.path().join("file1"));
+        std::fs::hard_link(&tmp_file, tmp_dir.path().join("file2")).unwrap();
+
+        let lscolors = LsColors::from_string("mh=35");
+        let style = lscolors.style_for_path(&tmp_file).unwrap();
+        assert_eq!(Some(Color::Magenta), style.foreground);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn style_for_sticky_other_writable() {
+        use std::fs::{set_permissions, Permissions};
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp_root = temp_dir();
+        let tmp_dir = create_dir(tmp_root.path().join("test-dir"));
+        let perms = Permissions::from_mode(0o1777);
+        set_permissions(&tmp_dir, perms).unwrap();
+
+        let so_style = get_default_style(&tmp_dir).unwrap();
+        assert_eq!(Some(Color::Black), so_style.foreground);
+        assert_eq!(Some(Color::Green), so_style.background);
+
+        let lscolors1 = LsColors::from_string("tw=0");
+        let ow_style = lscolors1.style_for_path(&tmp_dir).unwrap();
+        assert_eq!(Some(Color::Blue), ow_style.foreground);
+        assert_eq!(Some(Color::Green), ow_style.background);
+
+        let lscolors2 = LsColors::from_string("tw=0:ow=0");
+        let st_style = lscolors2.style_for_path(&tmp_dir).unwrap();
+        assert_eq!(Some(Color::White), st_style.foreground);
+        assert_eq!(Some(Color::Blue), st_style.background);
     }
 
     #[test]
