@@ -183,7 +183,7 @@ jobs:
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: run
-        args: --target=${{ matrix.job.target }} -- * src/*
+        args: --target=${{ matrix.job.target }} -- Cargo.toml Cargo.lock LICENSE-APACHE LICENSE-MIT README.md src/lib.rs
 
     - name: "Feature check: ansi_term"
       uses: actions-rs/cargo@v1
