@@ -230,12 +230,17 @@ impl LsColors {
             let parts: Vec<_> = entry.split('=').collect();
 
             if let Some([entry, ansi_style]) = parts.get(0..2) {
-                if let Some(style) = Style::from_ansi_sequence(ansi_style) {
-                    if entry.starts_with('*') {
+                let style = Style::from_ansi_sequence(ansi_style);
+                if let Some(suffix) = entry.strip_prefix('*') {
+                    if let Some(style) = style {
                         self.suffix_mapping
-                            .push((entry[1..].to_string().to_ascii_lowercase(), style));
-                    } else if let Some(indicator) = Indicator::from(entry) {
+                            .push((suffix.to_string().to_ascii_lowercase(), style));
+                    }
+                } else if let Some(indicator) = Indicator::from(entry) {
+                    if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
+                    } else {
+                        self.indicator_mapping.remove(&indicator);
                     }
                 }
             }
