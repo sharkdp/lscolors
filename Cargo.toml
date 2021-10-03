@@ -19,7 +19,7 @@ authors = ["David Peter <mail@david-peter.de>"]
 
 [dependencies]
 ansi_term = { version = "0.12", optional = true }
-crossterm = { version = "0.17", optional = true }
+crossterm = { version = "0.21", optional = true }
 
 [dev-dependencies]
 tempfile = "^3"
