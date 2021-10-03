@@ -37,12 +37,11 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --locked --all-targets --all-features -- --allow clippy::unknown_clippy_lints
+        args: --all-targets --all-features -- --allow clippy::unknown_clippy_lints
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --locked
 
   documentation:
     name: Documentation
@@ -62,7 +61,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: doc
-        args: --locked --no-deps --document-private-items --all-features
+        args: --no-deps --document-private-items --all-features
 
   build:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
@@ -125,7 +124,7 @@ jobs:
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: build
-        args: --locked --release --target=${{ matrix.job.target }}
+        args: --release --target=${{ matrix.job.target }}
 
     - name: Strip debug information from executable
       id: strip
@@ -177,35 +176,35 @@ jobs:
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: test
-        args: --locked --target=${{ matrix.job.target }} ${{ steps.test-options.outputs.CARGO_TEST_OPTIONS}}
+        args: --target=${{ matrix.job.target }} ${{ steps.test-options.outputs.CARGO_TEST_OPTIONS}}
 
     - name: Run lscolors
       uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: run
-        args: --locked --target=${{ matrix.job.target }} -- * src/*
+        args: --target=${{ matrix.job.target }} -- * src/*
 
     - name: "Feature check: ansi_term"
       uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: check
-        args: --locked --target=${{ matrix.job.target }} --verbose --lib --no-default-features --features ansi_term
+        args: --target=${{ matrix.job.target }} --verbose --lib --no-default-features --features ansi_term
 
     - name: "Feature check: crossterm"
       uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: check
-        args: --locked --target=${{ matrix.job.target }} --verbose --lib --no-default-features --features crossterm
+        args: --target=${{ matrix.job.target }} --verbose --lib --no-default-features --features crossterm
 
     - name: "Feature check: ansi_term,crossterm"
       uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: check
-        args: --locked --target=${{ matrix.job.target }} --verbose --lib --no-default-features --features ansi_term,crossterm
+        args: --target=${{ matrix.job.target }} --verbose --lib --no-default-features --features ansi_term,crossterm
 
     - name: Create tarball
       id: package
