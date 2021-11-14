@@ -12,7 +12,7 @@ keywords = [
     "color"
 ]
 license = "MIT/Apache-2.0"
-version = "0.8.0"
+version = "0.8.1"
 readme = "README.md"
 edition = "2018"
 authors = ["David Peter <mail@david-peter.de>"]
