@@ -223,7 +223,7 @@ impl Style {
 
         let mut parts: VecDeque<u8> = code
             .split(';')
-            .map(|c| u8::from_str_radix(c, 10).ok())
+            .map(|c| c.parse::<u8>().ok())
             .collect::<Option<_>>()?;
 
         let mut font_style = FontStyle::default();
