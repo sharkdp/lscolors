@@ -365,7 +365,7 @@ impl LsColors {
     /// together with their respective styles.
     pub fn style_for_path_components<'a>(&'a self, path: &'a Path) -> StyledComponents<'a> {
         StyledComponents {
-            lscolors: &self,
+            lscolors: self,
             component_path: PathBuf::new(),
             components: path.components().peekable(),
         }

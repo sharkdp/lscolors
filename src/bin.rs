@@ -34,7 +34,7 @@ fn run() -> io::Result<()> {
         let stdin = io::stdin();
         let mut buf = vec![];
 
-        while let Some(size) = stdin.lock().read_until(b'\n', &mut buf).ok() {
+        while let Ok(size) = stdin.lock().read_until(b'\n', &mut buf) {
             if size == 0 {
                 break;
             }
