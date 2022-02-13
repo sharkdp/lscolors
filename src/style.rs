@@ -346,21 +346,18 @@ impl Style {
     /// Convert to a `ansi_term::Style` (if the `ansi_term` feature is enabled).
     #[cfg(feature = "ansi_term")]
     pub fn to_ansi_term_style(&self) -> ansi_term::Style {
-        let mut ansi_style = ansi_term::Style::default();
-
-        ansi_style.foreground = self.foreground.as_ref().map(Color::to_ansi_term_color);
-        ansi_style.background = self.background.as_ref().map(Color::to_ansi_term_color);
-
-        ansi_style.is_bold = self.font_style.bold;
-        ansi_style.is_dimmed = self.font_style.dimmed;
-        ansi_style.is_italic = self.font_style.italic;
-        ansi_style.is_underline = self.font_style.underline;
-        ansi_style.is_blink = self.font_style.rapid_blink || self.font_style.slow_blink;
-        ansi_style.is_reverse = self.font_style.reverse;
-        ansi_style.is_hidden = self.font_style.hidden;
-        ansi_style.is_strikethrough = self.font_style.strikethrough;
-
-        ansi_style
+        ansi_term::Style {
+            foreground: self.foreground.as_ref().map(Color::to_ansi_term_color),
+            background: self.background.as_ref().map(Color::to_ansi_term_color),
+            is_bold: self.font_style.bold,
+            is_dimmed: self.font_style.dimmed,
+            is_italic: self.font_style.italic,
+            is_underline: self.font_style.underline,
+            is_blink: self.font_style.rapid_blink || self.font_style.slow_blink,
+            is_reverse: self.font_style.reverse,
+            is_hidden: self.font_style.hidden,
+            is_strikethrough: self.font_style.strikethrough,
+        }
     }
 
     /// Convert to a `crossterm::style::ContentStyle` (if the `crossterm` feature is enabled).
