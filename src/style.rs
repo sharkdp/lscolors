@@ -22,6 +22,14 @@ pub enum Color {
     Magenta,
     Cyan,
     White,
+    BrightBlack,
+    BrightRed,
+    BrightGreen,
+    BrightYellow,
+    BrightBlue,
+    BrightMagenta,
+    BrightCyan,
+    BrightWhite,
     Fixed(u8),
     RGB(u8, u8, u8),
 }
@@ -41,6 +49,17 @@ impl Color {
             Color::Magenta => ansi_term::Color::Purple,
             Color::Cyan => ansi_term::Color::Cyan,
             Color::White => ansi_term::Color::White,
+
+            // Below items are a rough translations to 256 colors as
+            // we do not have bright varients available on ansi-term
+            Color::BrightBlack => ansi_term::Color::Fixed(8),
+            Color::BrightRed => ansi_term::Color::Fixed(9),
+            Color::BrightGreen => ansi_term::Color::Fixed(10),
+            Color::BrightYellow => ansi_term::Color::Fixed(11),
+            Color::BrightBlue => ansi_term::Color::Fixed(12),
+            Color::BrightMagenta => ansi_term::Color::Fixed(13),
+            Color::BrightCyan => ansi_term::Color::Fixed(14),
+            Color::BrightWhite => ansi_term::Color::Fixed(15),
         }
     }
 
@@ -55,13 +74,21 @@ impl Color {
             },
             Color::Fixed(n) => crossterm::style::Color::AnsiValue(*n),
             Color::Black => crossterm::style::Color::Black,
-            Color::Red => crossterm::style::Color::Red,
-            Color::Green => crossterm::style::Color::Green,
-            Color::Yellow => crossterm::style::Color::Yellow,
-            Color::Blue => crossterm::style::Color::Blue,
-            Color::Magenta => crossterm::style::Color::Magenta,
-            Color::Cyan => crossterm::style::Color::Cyan,
-            Color::White => crossterm::style::Color::White,
+            Color::Red => crossterm::style::Color::DarkRed,
+            Color::Green => crossterm::style::Color::DarkGreen,
+            Color::Yellow => crossterm::style::Color::DarkYellow,
+            Color::Blue => crossterm::style::Color::DarkBlue,
+            Color::Magenta => crossterm::style::Color::DarkMagenta,
+            Color::Cyan => crossterm::style::Color::DarkCyan,
+            Color::White => crossterm::style::Color::Grey,
+            Color::BrightBlack => crossterm::style::Color::DarkGrey,
+            Color::BrightRed => crossterm::style::Color::Red,
+            Color::BrightGreen => crossterm::style::Color::Green,
+            Color::BrightYellow => crossterm::style::Color::Yellow,
+            Color::BrightBlue => crossterm::style::Color::Blue,
+            Color::BrightMagenta => crossterm::style::Color::Magenta,
+            Color::BrightCyan => crossterm::style::Color::Cyan,
+            Color::BrightWhite => crossterm::style::Color::White,
         }
     }
 }
@@ -284,6 +311,22 @@ impl Style {
                     }
                 },
                 Some(49) => background = None,
+                Some(90) => foreground = Some(Color::BrightBlack),
+                Some(91) => foreground = Some(Color::BrightRed),
+                Some(92) => foreground = Some(Color::BrightGreen),
+                Some(93) => foreground = Some(Color::BrightYellow),
+                Some(94) => foreground = Some(Color::BrightBlue),
+                Some(95) => foreground = Some(Color::BrightMagenta),
+                Some(96) => foreground = Some(Color::BrightCyan),
+                Some(97) => foreground = Some(Color::BrightWhite),
+                Some(100) => background = Some(Color::BrightBlack),
+                Some(101) => background = Some(Color::BrightRed),
+                Some(102) => background = Some(Color::BrightGreen),
+                Some(103) => background = Some(Color::BrightYellow),
+                Some(104) => background = Some(Color::BrightBlue),
+                Some(105) => background = Some(Color::BrightMagenta),
+                Some(106) => background = Some(Color::BrightCyan),
+                Some(107) => background = Some(Color::BrightWhite),
                 Some(_) => {
                     continue;
                 }
@@ -351,6 +394,8 @@ mod tests {
     fn parse_simple() {
         assert_style("31", Some(Color::Red), None, FontStyle::default());
         assert_style("47", None, Some(Color::White), FontStyle::default());
+        assert_style("91", Some(Color::BrightRed), None, FontStyle::default());
+        assert_style("107", None, Some(Color::BrightWhite), FontStyle::default());
         assert_style(
             "32;40",
             Some(Color::Green),
