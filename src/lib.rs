@@ -23,6 +23,7 @@ pub mod style;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
+use std::fs::{DirEntry, FileType, Metadata};
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
 pub use crate::style::{Color, FontStyle, Style};
@@ -177,6 +178,39 @@ impl<'a> Iterator for StyledComponents<'a> {
     }
 }
 
+/// A colorable file path.
+pub trait Colorable {
+    /// Get the full path to this file.
+    fn path(&self) -> PathBuf;
+
+    /// Get the name of this file.
+    fn file_name(&self) -> OsString;
+
+    /// Try to get the type of this file.
+    fn file_type(&self) -> Option<FileType>;
+
+    /// Try to get the metadata for this file.
+    fn metadata(&self) -> Option<Metadata>;
+}
+
+impl Colorable for DirEntry {
+    fn path(&self) -> PathBuf {
+        self.path()
+    }
+
+    fn file_name(&self) -> OsString {
+        self.file_name()
+    }
+
+    fn file_type(&self) -> Option<FileType> {
+        self.file_type().ok()
+    }
+
+    fn metadata(&self) -> Option<Metadata> {
+        self.metadata().ok()
+    }
+}
+
 const LS_COLORS_DEFAULT: &str = "rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:";
 
 /// Holds information about how different file system entries should be colorized / styled.
@@ -261,42 +295,69 @@ impl LsColors {
         self.indicator_mapping.contains_key(&indicator)
     }
 
+    /// Check if we need metadata to color a regular file.
+    fn needs_file_metadata(&self) -> bool {
+        self.has_color_for(Indicator::Setuid)
+            || self.has_color_for(Indicator::Setgid)
+            || self.has_color_for(Indicator::ExecutableFile)
+            || self.has_color_for(Indicator::MultipleHardLinks)
+    }
+
+    /// Check if we need metadata to color a directory.
+    fn needs_dir_metadata(&self) -> bool {
+        self.has_color_for(Indicator::StickyAndOtherWritable)
+            || self.has_color_for(Indicator::OtherWritable)
+            || self.has_color_for(Indicator::Sticky)
+    }
+
     /// Get the indicator type for a path with corresponding metadata.
-    fn indicator_for(&self, path: &Path, metadata: Option<&std::fs::Metadata>) -> Indicator {
-        if let Some(metadata) = metadata {
-            let file_type = metadata.file_type();
+    fn indicator_for<F: Colorable>(&self, file: &F) -> Indicator {
+        let file_type = file.file_type();
 
+        if let Some(file_type) = file_type {
             if file_type.is_file() {
-                let mode = crate::fs::mode(metadata);
-                let nlink = crate::fs::nlink(metadata);
+                if self.needs_file_metadata() {
+                    if let Some(metadata) = file.metadata() {
+                        let mode = crate::fs::mode(&metadata);
+                        let nlink = crate::fs::nlink(&metadata);
 
-                if self.has_color_for(Indicator::Setuid) && mode & 0o4000 != 0 {
-                    Indicator::Setuid
-                } else if self.has_color_for(Indicator::Setgid) && mode & 0o2000 != 0 {
-                    Indicator::Setgid
-                } else if self.has_color_for(Indicator::ExecutableFile) && mode & 0o0111 != 0 {
-                    Indicator::ExecutableFile
-                } else if self.has_color_for(Indicator::MultipleHardLinks) && nlink > 1 {
-                    Indicator::MultipleHardLinks
-                } else {
-                    Indicator::RegularFile
+                        if self.has_color_for(Indicator::Setuid) && mode & 0o4000 != 0 {
+                            return Indicator::Setuid;
+                        } else if self.has_color_for(Indicator::Setgid) && mode & 0o2000 != 0 {
+                            return Indicator::Setgid;
+                        } else if self.has_color_for(Indicator::ExecutableFile)
+                            && mode & 0o0111 != 0
+                        {
+                            return Indicator::ExecutableFile;
+                        } else if self.has_color_for(Indicator::MultipleHardLinks) && nlink > 1 {
+                            return Indicator::MultipleHardLinks;
+                        }
+                    }
                 }
+
+                Indicator::RegularFile
             } else if file_type.is_dir() {
-                let mode = crate::fs::mode(metadata);
+                if self.needs_dir_metadata() {
+                    if let Some(metadata) = file.metadata() {
+                        let mode = crate::fs::mode(&metadata);
 
-                if self.has_color_for(Indicator::StickyAndOtherWritable) && mode & 0o1002 == 0o1002
-                {
-                    Indicator::StickyAndOtherWritable
-                } else if self.has_color_for(Indicator::OtherWritable) && mode & 0o0002 != 0 {
-                    Indicator::OtherWritable
-                } else if self.has_color_for(Indicator::Sticky) && mode & 0o1000 != 0 {
-                    Indicator::Sticky
-                } else {
-                    Indicator::Directory
+                        if self.has_color_for(Indicator::StickyAndOtherWritable)
+                            && mode & 0o1002 == 0o1002
+                        {
+                            return Indicator::StickyAndOtherWritable;
+                        } else if self.has_color_for(Indicator::OtherWritable) && mode & 0o0002 != 0
+                        {
+                            return Indicator::OtherWritable;
+                        } else if self.has_color_for(Indicator::Sticky) && mode & 0o1000 != 0 {
+                            return Indicator::Sticky;
+                        }
+                    }
                 }
+
+                Indicator::Directory
             } else if file_type.is_symlink() {
                 // This works because `Path::exists` traverses symlinks.
-                if self.has_color_for(Indicator::OrphanedSymbolicLink) && !path.exists() {
+                if self.has_color_for(Indicator::OrphanedSymbolicLink) && !file.path().exists() {
                     return Indicator::OrphanedSymbolicLink;
                 }
 
@@ -329,21 +390,14 @@ impl LsColors {
         }
     }
 
-    /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
-    ///
-    /// *Note:* The `Metadata` struct must have been acquired via `Path::symlink_metadata` in
-    /// order to colorize symbolic links correctly.
-    pub fn style_for_path_with_metadata<P: AsRef<Path>>(
-        &self,
-        path: P,
-        metadata: Option<&std::fs::Metadata>,
-    ) -> Option<&Style> {
-        let indicator = self.indicator_for(path.as_ref(), metadata);
+    /// Get the ANSI style for a colorable path.
+    pub fn style_for<F: Colorable>(&self, file: &F) -> Option<&Style> {
+        let indicator = self.indicator_for(file);
 
         if indicator == Indicator::RegularFile {
             // Note: using '.to_str()' here means that filename
             // matching will not work with invalid-UTF-8 paths.
-            let filename = path.as_ref().file_name()?.to_str()?.to_ascii_lowercase();
+            let filename = file.file_name().to_str()?.to_ascii_lowercase();
 
             // We need to traverse LS_COLORS from back to front
             // to be consistent with `ls`:
@@ -357,6 +411,50 @@ impl LsColors {
         }
 
         self.style_for_indicator(indicator)
+    }
+
+    /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
+    ///
+    /// *Note:* The `Metadata` struct must have been acquired via `Path::symlink_metadata` in
+    /// order to colorize symbolic links correctly.
+    pub fn style_for_path_with_metadata<P: AsRef<Path>>(
+        &self,
+        path: P,
+        metadata: Option<&std::fs::Metadata>,
+    ) -> Option<&Style> {
+        struct PathWithMetadata<'a> {
+            path: &'a Path,
+            metadata: Option<&'a Metadata>,
+        }
+
+        impl Colorable for PathWithMetadata<'_> {
+            fn path(&self) -> PathBuf {
+                self.path.to_owned()
+            }
+
+            fn file_name(&self) -> OsString {
+                // Path::file_name() only works if the last component is Normal, but
+                // we want it for all component types, so we open code it
+
+                self.path
+                    .components()
+                    .last()
+                    .map(|c| c.as_os_str())
+                    .unwrap_or_else(|| self.path.as_os_str())
+                    .to_owned()
+            }
+
+            fn file_type(&self) -> Option<FileType> {
+                self.metadata.map(|m| m.file_type())
+            }
+
+            fn metadata(&self) -> Option<Metadata> {
+                self.metadata.cloned()
+            }
+        }
+
+        let path = path.as_ref();
+        self.style_for(&PathWithMetadata { path, metadata })
     }
 
     /// Get ANSI styles for each component of a given path. Components already include the path
@@ -656,5 +754,20 @@ mod tests {
 
         let (_, style_dir) = components.pop().unwrap();
         assert_eq!(Some(Color::Blue), style_dir.unwrap().foreground);
+    }
+
+    #[test]
+    fn style_for_dir_entry() {
+        use std::fs::read_dir;
+
+        let tmp_root = temp_dir();
+        create_file(tmp_root.path().join("test-file.png"));
+
+        let lscolors = LsColors::from_string("*.png=01;35");
+
+        for entry in read_dir(tmp_root.path()).unwrap() {
+            let style = lscolors.style_for(&entry.unwrap()).unwrap();
+            assert_eq!(Some(Color::Magenta), style.foreground);
+        }
     }
 }
