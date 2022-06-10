@@ -220,7 +220,7 @@ pub struct LsColors {
 
     // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
     // preserve the exact order of the mapping in order to be consistent with `ls`.
-    suffix_mapping: Vec<(FileNameSuffix, Style)>,
+    suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
 }
 
 impl Default for LsColors {
@@ -266,10 +266,8 @@ impl LsColors {
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 let style = Style::from_ansi_sequence(ansi_style);
                 if let Some(suffix) = entry.strip_prefix('*') {
-                    if let Some(style) = style {
-                        self.suffix_mapping
-                            .push((suffix.to_string().to_ascii_lowercase(), style));
-                    }
+                    self.suffix_mapping
+                        .push((suffix.to_string().to_ascii_lowercase(), style));
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
@@ -405,7 +403,7 @@ impl LsColors {
                 // Note: For some reason, 'ends_with' is much
                 // slower if we omit `.as_str()` here:
                 if filename.ends_with(suffix.as_str()) {
-                    return Some(style);
+                    return style.as_ref();
                 }
             }
         }
@@ -770,5 +768,15 @@ mod tests {
             let style = lscolors.style_for(&entry.unwrap()).unwrap();
             assert_eq!(Some(Color::Magenta), style.foreground);
         }
+    }
+
+    #[test]
+    fn override_disable_suffix() {
+        let tmp_dir = temp_dir();
+        let tmp_file = create_file(tmp_dir.path().join("test-file.png"));
+
+        let lscolors = LsColors::from_string("*.png=01;35:*.png=0");
+        let style = lscolors.style_for_path(&tmp_file);
+        assert_eq!(None, style);
     }
 }
