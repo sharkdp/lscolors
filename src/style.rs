@@ -212,6 +212,7 @@ pub struct Style {
     pub foreground: Option<Color>,
     pub background: Option<Color>,
     pub font_style: FontStyle,
+    pub underline: Option<Color>,
 }
 
 impl Style {
@@ -229,6 +230,7 @@ impl Style {
         let mut font_style = FontStyle::default();
         let mut foreground = None;
         let mut background = None;
+        let mut underline = None;
 
         loop {
             match parts.pop_front() {
@@ -311,6 +313,18 @@ impl Style {
                     }
                 },
                 Some(49) => background = None,
+                Some(58) => match (parts.pop_front(), parts.pop_front()) {
+                    (Some(5), Some(color)) => underline = Some(Color::Fixed(color)),
+                    (Some(2), Some(red)) => match (parts.pop_front(), parts.pop_front()) {
+                        (Some(green), Some(blue)) => underline = Some(Color::RGB(red, green, blue)),
+                        _ => {
+                            break;
+                        }
+                    },
+                    _ => {
+                        break;
+                    }
+                },
                 Some(90) => foreground = Some(Color::BrightBlack),
                 Some(91) => foreground = Some(Color::BrightRed),
                 Some(92) => foreground = Some(Color::BrightGreen),
@@ -340,6 +354,7 @@ impl Style {
             foreground,
             background,
             font_style,
+            underline,
         })
     }
 
@@ -367,7 +382,7 @@ impl Style {
             foreground_color: self.foreground.as_ref().map(Color::to_crossterm_color),
             background_color: self.background.as_ref().map(Color::to_crossterm_color),
             attributes: self.font_style.to_crossterm_attributes(),
-            underline_color: None,
+            underline_color: self.underline.as_ref().map(Color::to_crossterm_color),
         }
     }
 }
@@ -380,24 +395,39 @@ mod tests {
         code: &str,
         foreground: Option<Color>,
         background: Option<Color>,
+        underline: Option<Color>,
         font_style: FontStyle,
     ) {
         let style = Style::from_ansi_sequence(code).unwrap();
         assert_eq!(foreground, style.foreground);
         assert_eq!(background, style.background);
+        assert_eq!(underline, style.underline);
         assert_eq!(font_style, style.font_style);
     }
 
     #[test]
     fn parse_simple() {
-        assert_style("31", Some(Color::Red), None, FontStyle::default());
-        assert_style("47", None, Some(Color::White), FontStyle::default());
-        assert_style("91", Some(Color::BrightRed), None, FontStyle::default());
-        assert_style("107", None, Some(Color::BrightWhite), FontStyle::default());
+        assert_style("31", Some(Color::Red), None, None, FontStyle::default());
+        assert_style("47", None, Some(Color::White), None, FontStyle::default());
+        assert_style(
+            "91",
+            Some(Color::BrightRed),
+            None,
+            None,
+            FontStyle::default(),
+        );
+        assert_style(
+            "107",
+            None,
+            Some(Color::BrightWhite),
+            None,
+            FontStyle::default(),
+        );
         assert_style(
             "32;40",
             Some(Color::Green),
             Some(Color::Black),
+            None,
             FontStyle::default(),
         );
     }
@@ -411,16 +441,22 @@ mod tests {
 
     #[test]
     fn parse_font_style() {
-        assert_style("00;31", Some(Color::Red), None, FontStyle::default());
-        assert_style("03;34", Some(Color::Blue), None, FontStyle::italic());
-        assert_style("06;34", Some(Color::Blue), None, FontStyle::rapid_blink());
-        assert_style("01;36", Some(Color::Cyan), None, FontStyle::bold());
+        assert_style("00;31", Some(Color::Red), None, None, FontStyle::default());
+        assert_style("03;34", Some(Color::Blue), None, None, FontStyle::italic());
+        assert_style(
+            "06;34",
+            Some(Color::Blue),
+            None,
+            None,
+            FontStyle::rapid_blink(),
+        );
+        assert_style("01;36", Some(Color::Cyan), None, None, FontStyle::bold());
         let italic_and_bold = FontStyle {
             bold: true,
             italic: true,
             ..Default::default()
         };
-        assert_style("01;03", None, None, italic_and_bold);
+        assert_style("01;03", None, None, None, italic_and_bold);
     }
 
     #[test]
@@ -431,15 +467,21 @@ mod tests {
 
     #[test]
     fn support_reset_of_styles() {
-        assert_style("01;31", Some(Color::Red), None, FontStyle::bold());
-        assert_style("01;31;22", Some(Color::Red), None, FontStyle::default());
+        assert_style("01;31", Some(Color::Red), None, None, FontStyle::bold());
+        assert_style(
+            "01;31;22",
+            Some(Color::Red),
+            None,
+            None,
+            FontStyle::default(),
+        );
     }
 
     #[test]
     fn parse_font_style_backwards() {
-        assert_style("34;03", Some(Color::Blue), None, FontStyle::italic());
-        assert_style("36;01", Some(Color::Cyan), None, FontStyle::bold());
-        assert_style("31;00", Some(Color::Red), None, FontStyle::default());
+        assert_style("34;03", Some(Color::Blue), None, None, FontStyle::italic());
+        assert_style("36;01", Some(Color::Cyan), None, None, FontStyle::bold());
+        assert_style("31;00", Some(Color::Red), None, None, FontStyle::default());
     }
 
     #[test]
@@ -448,11 +490,13 @@ mod tests {
             "38;5;115",
             Some(Color::Fixed(115)),
             None,
+            None,
             FontStyle::default(),
         );
         assert_style(
             "00;38;5;115",
             Some(Color::Fixed(115)),
+            None,
             None,
             FontStyle::default(),
         );
@@ -460,12 +504,35 @@ mod tests {
             "01;38;5;119",
             Some(Color::Fixed(119)),
             None,
+            None,
             FontStyle::bold(),
         );
         assert_style(
             "38;5;119;01",
             Some(Color::Fixed(119)),
             None,
+            None,
+            FontStyle::bold(),
+        );
+        assert_style(
+            "58;5;115",
+            None,
+            None,
+            Some(Color::Fixed(115)),
+            FontStyle::default(),
+        );
+        assert_style(
+            "00;58;5;115",
+            None,
+            None,
+            Some(Color::Fixed(115)),
+            FontStyle::default(),
+        );
+        assert_style(
+            "01;58;5;119",
+            None,
+            None,
+            Some(Color::Fixed(119)),
             FontStyle::bold(),
         );
     }
@@ -476,11 +543,13 @@ mod tests {
             "38;2;115;3;100",
             Some(Color::RGB(115, 3, 100)),
             None,
+            None,
             FontStyle::default(),
         );
         assert_style(
             "38;2;115;3;100;3",
             Some(Color::RGB(115, 3, 100)),
+            None,
             None,
             FontStyle::italic(),
         );
@@ -488,6 +557,14 @@ mod tests {
             "48;2;100;200;0;1;38;2;0;10;20",
             Some(Color::RGB(0, 10, 20)),
             Some(Color::RGB(100, 200, 0)),
+            None,
+            FontStyle::bold(),
+        );
+        assert_style(
+            "48;2;100;200;0;1;38;2;0;10;20;58;2;64;64;64",
+            Some(Color::RGB(0, 10, 20)),
+            Some(Color::RGB(100, 200, 0)),
+            Some(Color::RGB(64, 64, 64)),
             FontStyle::bold(),
         );
     }
