@@ -367,7 +367,7 @@ impl Style {
             foreground_color: self.foreground.as_ref().map(Color::to_crossterm_color),
             background_color: self.background.as_ref().map(Color::to_crossterm_color),
             attributes: self.font_style.to_crossterm_attributes(),
-            underline_color: self.foreground.as_ref().map(Color::to_crossterm_color),
+            underline_color: None,
         }
     }
 }
