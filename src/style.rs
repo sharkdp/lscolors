@@ -325,6 +325,7 @@ impl Style {
                         break;
                     }
                 },
+                Some(59) => underline = None,
                 Some(90) => foreground = Some(Color::BrightBlack),
                 Some(91) => foreground = Some(Color::BrightRed),
                 Some(92) => foreground = Some(Color::BrightGreen),
