@@ -7,7 +7,7 @@ use lscolors::{LsColors, Style};
 
 fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
     for (component, style) in ls_colors.style_for_path_components(Path::new(path)) {
-        let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
+        let ansi_style = style.map(Style::to_nu_ansi_term_style).unwrap_or_default();
         write!(handle, "{}", ansi_style.paint(component.to_string_lossy()))?;
     }
     writeln!(handle)?;

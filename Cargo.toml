@@ -18,16 +18,16 @@ edition = "2021"
 authors = ["David Peter <mail@david-peter.de>"]
 
 [dependencies]
-ansi_term = { version = "0.12", optional = true }
 crossterm = { version = "0.25", optional = true }
+nu-ansi-term = { version = "0.46", optional = true }
 
 [dev-dependencies]
 tempfile = "^3"
 
 [features]
-default = ["ansi_term"]
+default = ["nu-ansi-term"]
 
 [[bin]]
 name = "lscolors"
 path = "src/bin.rs"
-required-features = ["ansi_term"]
+required-features = ["nu-ansi-term"]

@@ -9,10 +9,10 @@
 //! let path = "some/folder/archive.zip";
 //! let style = lscolors.style_for_path(path);
 //!
-//! // If you want to use `ansi_term`:
-//! # #[cfg(features = "ansi_term")]
+//! // If you want to use `nu_ansi_term`:
+//! # #[cfg(features = "nu_ansi_term")]
 //! # {
-//! let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
+//! let ansi_style = style.map(Style::to_nu_ansi_term_style).unwrap_or_default();
 //! println!("{}", ansi_style.paint(path));
 //! # }
 //! ```
