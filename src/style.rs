@@ -4,8 +4,8 @@
 //! [ANSI escape code (Wikipedia)](https://en.wikipedia.org/wiki/ANSI_escape_code).
 use std::collections::VecDeque;
 
-#[cfg(ansi_term)]
-use ansi_term;
+#[cfg(nu_ansi_term)]
+use nu_ansi_term;
 
 #[cfg(crossterm)]
 use crossterm;
@@ -35,31 +35,31 @@ pub enum Color {
 }
 
 impl Color {
-    /// Convert to a `ansi_term::Color` (if the `ansi_term` feature is enabled).
-    #[cfg(feature = "ansi_term")]
-    pub fn to_ansi_term_color(&self) -> ansi_term::Color {
+    /// Convert to a `nu_ansi_term::Color` (if the `nu_ansi_term` feature is enabled).
+    #[cfg(feature = "nu-ansi-term")]
+    pub fn to_nu_ansi_term_color(&self) -> nu_ansi_term::Color {
         match self {
-            Color::RGB(r, g, b) => ansi_term::Color::RGB(*r, *g, *b),
-            Color::Fixed(n) => ansi_term::Color::Fixed(*n),
-            Color::Black => ansi_term::Color::Black,
-            Color::Red => ansi_term::Color::Red,
-            Color::Green => ansi_term::Color::Green,
-            Color::Yellow => ansi_term::Color::Yellow,
-            Color::Blue => ansi_term::Color::Blue,
-            Color::Magenta => ansi_term::Color::Purple,
-            Color::Cyan => ansi_term::Color::Cyan,
-            Color::White => ansi_term::Color::White,
+            Color::RGB(r, g, b) => nu_ansi_term::Color::Rgb(*r, *g, *b),
+            Color::Fixed(n) => nu_ansi_term::Color::Fixed(*n),
+            Color::Black => nu_ansi_term::Color::Black,
+            Color::Red => nu_ansi_term::Color::Red,
+            Color::Green => nu_ansi_term::Color::Green,
+            Color::Yellow => nu_ansi_term::Color::Yellow,
+            Color::Blue => nu_ansi_term::Color::Blue,
+            Color::Magenta => nu_ansi_term::Color::Purple,
+            Color::Cyan => nu_ansi_term::Color::Cyan,
+            Color::White => nu_ansi_term::Color::White,
 
             // Below items are a rough translations to 256 colors as
             // we do not have bright varients available on ansi-term
-            Color::BrightBlack => ansi_term::Color::Fixed(8),
-            Color::BrightRed => ansi_term::Color::Fixed(9),
-            Color::BrightGreen => ansi_term::Color::Fixed(10),
-            Color::BrightYellow => ansi_term::Color::Fixed(11),
-            Color::BrightBlue => ansi_term::Color::Fixed(12),
-            Color::BrightMagenta => ansi_term::Color::Fixed(13),
-            Color::BrightCyan => ansi_term::Color::Fixed(14),
-            Color::BrightWhite => ansi_term::Color::Fixed(15),
+            Color::BrightBlack => nu_ansi_term::Color::Fixed(8),
+            Color::BrightRed => nu_ansi_term::Color::Fixed(9),
+            Color::BrightGreen => nu_ansi_term::Color::Fixed(10),
+            Color::BrightYellow => nu_ansi_term::Color::Fixed(11),
+            Color::BrightBlue => nu_ansi_term::Color::Fixed(12),
+            Color::BrightMagenta => nu_ansi_term::Color::Fixed(13),
+            Color::BrightCyan => nu_ansi_term::Color::Fixed(14),
+            Color::BrightWhite => nu_ansi_term::Color::Fixed(15),
         }
     }
 
@@ -359,12 +359,12 @@ impl Style {
         })
     }
 
-    /// Convert to a `ansi_term::Style` (if the `ansi_term` feature is enabled).
-    #[cfg(feature = "ansi_term")]
-    pub fn to_ansi_term_style(&self) -> ansi_term::Style {
-        ansi_term::Style {
-            foreground: self.foreground.as_ref().map(Color::to_ansi_term_color),
-            background: self.background.as_ref().map(Color::to_ansi_term_color),
+    /// Convert to a `nu_ansi_term::Style` (if the `nu_ansi_term` feature is enabled).
+    #[cfg(feature = "nu-ansi-term")]
+    pub fn to_nu_ansi_term_style(&self) -> nu_ansi_term::Style {
+        nu_ansi_term::Style {
+            foreground: self.foreground.as_ref().map(Color::to_nu_ansi_term_color),
+            background: self.background.as_ref().map(Color::to_nu_ansi_term_color),
             is_bold: self.font_style.bold,
             is_dimmed: self.font_style.dimmed,
             is_italic: self.font_style.italic,
