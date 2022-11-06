@@ -7,6 +7,9 @@ use std::collections::VecDeque;
 #[cfg(nu_ansi_term)]
 use nu_ansi_term;
 
+#[cfg(ansi_term)]
+use ansi_term;
+
 #[cfg(crossterm)]
 use crossterm;
 
@@ -35,6 +38,34 @@ pub enum Color {
 }
 
 impl Color {
+    /// Convert to a `ansi_term::Color` (if the `ansi_term` feature is enabled).
+    #[cfg(feature = "ansi_term")]
+    pub fn to_ansi_term_color(&self) -> ansi_term::Color {
+        match self {
+            Color::RGB(r, g, b) => ansi_term::Color::RGB(*r, *g, *b),
+            Color::Fixed(n) => ansi_term::Color::Fixed(*n),
+            Color::Black => ansi_term::Color::Black,
+            Color::Red => ansi_term::Color::Red,
+            Color::Green => ansi_term::Color::Green,
+            Color::Yellow => ansi_term::Color::Yellow,
+            Color::Blue => ansi_term::Color::Blue,
+            Color::Magenta => ansi_term::Color::Purple,
+            Color::Cyan => ansi_term::Color::Cyan,
+            Color::White => ansi_term::Color::White,
+
+            // Below items are a rough translations to 256 colors as
+            // we do not have bright varients available on ansi-term
+            Color::BrightBlack => ansi_term::Color::Fixed(8),
+            Color::BrightRed => ansi_term::Color::Fixed(9),
+            Color::BrightGreen => ansi_term::Color::Fixed(10),
+            Color::BrightYellow => ansi_term::Color::Fixed(11),
+            Color::BrightBlue => ansi_term::Color::Fixed(12),
+            Color::BrightMagenta => ansi_term::Color::Fixed(13),
+            Color::BrightCyan => ansi_term::Color::Fixed(14),
+            Color::BrightWhite => ansi_term::Color::Fixed(15),
+        }
+    }
+
     /// Convert to a `nu_ansi_term::Color` (if the `nu_ansi_term` feature is enabled).
     #[cfg(feature = "nu-ansi-term")]
     pub fn to_nu_ansi_term_color(&self) -> nu_ansi_term::Color {
@@ -357,6 +388,23 @@ impl Style {
             font_style,
             underline,
         })
+    }
+
+    /// Convert to a `ansi_term::Style` (if the `ansi_term` feature is enabled).
+    #[cfg(feature = "ansi_term")]
+    pub fn to_ansi_term_style(&self) -> ansi_term::Style {
+        ansi_term::Style {
+            foreground: self.foreground.as_ref().map(Color::to_ansi_term_color),
+            background: self.background.as_ref().map(Color::to_ansi_term_color),
+            is_bold: self.font_style.bold,
+            is_dimmed: self.font_style.dimmed,
+            is_italic: self.font_style.italic,
+            is_underline: self.font_style.underline,
+            is_blink: self.font_style.rapid_blink || self.font_style.slow_blink,
+            is_reverse: self.font_style.reverse,
+            is_hidden: self.font_style.hidden,
+            is_strikethrough: self.font_style.strikethrough,
+        }
     }
 
     /// Convert to a `nu_ansi_term::Style` (if the `nu_ansi_term` feature is enabled).

@@ -18,7 +18,12 @@ let lscolors = LsColors::from_env().unwrap_or_default();
 let path = "some/folder/test.tar.gz";
 let style = lscolors.style_for_path(path);
 
-// If you want to use `nu-ansi-term` (used to be called ansi_term):
+// If you want to use `ansi_term`:
+let ansi_style = style.map(Style::to_ansi_term_style)
+                      .unwrap_or_default();
+println!("{}", ansi_style.paint(path));
+
+// If you want to use `nu-ansi-term` (fork of ansi_term):
 let ansi_style = style.map(Style::to_nu_ansi_term_style)
                       .unwrap_or_default();
 println!("{}", ansi_style.paint(path));
