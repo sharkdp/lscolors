@@ -4,15 +4,6 @@
 //! [ANSI escape code (Wikipedia)](https://en.wikipedia.org/wiki/ANSI_escape_code).
 use std::collections::VecDeque;
 
-#[cfg(nu_ansi_term)]
-use nu_ansi_term;
-
-#[cfg(ansi_term)]
-use ansi_term;
-
-#[cfg(crossterm)]
-use crossterm;
-
 /// A `Color` can be one of the pre-defined ANSI colors (`Red`, `Green`, ..),
 /// a 8-bit ANSI color (`Fixed(u8)`) or a 24-bit color (`RGB(u8, u8, u8)`).
 #[derive(Debug, Clone, PartialEq)]
