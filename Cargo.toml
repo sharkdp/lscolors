@@ -16,6 +16,7 @@ version = "0.13.0"
 readme = "README.md"
 edition = "2021"
 authors = ["David Peter <mail@david-peter.de>"]
+rust-version = "1.59.0"
 
 [dependencies]
 ansi_term = { version = "0.12", optional = true }
@@ -32,3 +33,8 @@ default = ["ansi_term", "nu-ansi-term"]
 name = "lscolors"
 path = "src/bin.rs"
 required-features = ["ansi_term", "nu-ansi-term"]
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
