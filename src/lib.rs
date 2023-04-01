@@ -218,7 +218,7 @@ impl Colorable for DirEntry {
     }
 }
 
-const LS_COLORS_DEFAULT: &str = "rs=0:lc=\\033[:rc=m:cl=\\033[K:ex=01;32:sg=30;43:su=37;41:di=01;34:st=37;44:ow=34;42:tw=30;42:ln=01;36:bd=01;33:cd=01;33:do=01;35:pi=33:so=01;35:";
+const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:su=37;41:di=01;34:st=37;44:ow=34;42:tw=30;42:ln=01;36:bd=01;33:cd=01;33:do=01;35:pi=33:so=01;35:";
 
 /// Holds information about how different file system entries should be colorized / styled.
 #[derive(Debug, Clone)]
