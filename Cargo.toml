@@ -38,3 +38,8 @@ required-features = ["nu-ansi-term"]
 lto = true
 strip = true
 codegen-units = 1
+
+[[test]]
+name = "integration_tests"
+path = "tests/integration_tests.rs"
+required-features = ["nu-ansi-term"]
