@@ -2,7 +2,7 @@
 
 <img src="https://i.imgur.com/RE4Ont5.png" align="right">
 
-[![Build Status](https://travis-ci.org/sharkdp/lscolors.svg?branch=master)](https://travis-ci.org/sharkdp/lscolors)
+[![CICD](https://github.com/sharkdp/lscolors/actions/workflows/CICD.yml/badge.svg)](https://github.com/sharkdp/lscolors/actions/workflows/CICD.yml)
 [![Crates.io](https://img.shields.io/crates/v/lscolors.svg)](https://crates.io/crates/lscolors)
 [![Documentation](https://docs.rs/lscolors/badge.svg)](https://docs.rs/lscolors)
 
