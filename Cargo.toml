@@ -23,7 +23,7 @@ default = []
 
 [dependencies]
 ansi_term = { version = "0.12", optional = true }
-nu-ansi-term = { version = "0.46", optional = true }
+nu-ansi-term = { version = "0.47", optional = true }
 crossterm = { version = "0.26", optional = true }
 
 [dev-dependencies]
