@@ -41,6 +41,10 @@ can be used to colorize the output of other commands:
 
 You can install it by running `cargo install lscolors` or by downloading one
 of the prebuilt binaries from the [release page](https://github.com/sharkdp/lscolors/releases).
+If you want to build the application from source, you can run
+```rs
+cargo build --release --features=nu-ansi-term --locked
+```
 
 ## License
 
