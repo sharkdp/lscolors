@@ -33,7 +33,6 @@ tempfile = "^3"
 [[bin]]
 name = "lscolors"
 path = "src/bin.rs"
-required-features = ["nu-ansi-term"]
 
 [profile.release]
 lto = true

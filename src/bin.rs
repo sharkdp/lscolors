@@ -5,10 +5,36 @@ use std::path::Path;
 
 use lscolors::{LsColors, Style};
 
+#[cfg(all(not(feature = "nu-ansi-term"), not(feature = "gnu_legacy"),not(feature = "ansi_term"), not(feature = "crossterm")))]
+compile_error!("one feature must be enabled: ansi_term, nu-ansi-term, crossterm, gnu_legacy");
+
+#[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
 fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
     for (component, style) in ls_colors.style_for_path_components(Path::new(path)) {
         let ansi_style = style.map(Style::to_nu_ansi_term_style).unwrap_or_default();
         write!(handle, "{}", ansi_style.paint(component.to_string_lossy()))?;
+    }
+    writeln!(handle)?;
+
+    Ok(())
+}
+
+#[cfg(feature = "ansi_term")]
+fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
+    for (component, style) in ls_colors.style_for_path_components(Path::new(path)) {
+        let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
+        write!(handle, "{}", ansi_style.paint(component.to_string_lossy()))?;
+    }
+    writeln!(handle)?;
+
+    Ok(())
+}
+
+#[cfg(feature = "crossterm")]
+fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
+    for (component, style) in ls_colors.style_for_path_components(Path::new(path)) {
+        let ansi_style = style.map(Style::to_crossterm_style).unwrap_or_default();
+        write!(handle, "{}", ansi_style.apply(component.to_string_lossy()))?;
     }
     writeln!(handle)?;
 
