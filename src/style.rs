@@ -2,6 +2,10 @@
 //!
 //! For more information, see
 //! [ANSI escape code (Wikipedia)](https://en.wikipedia.org/wiki/ANSI_escape_code).
+#[cfg(feature = "gnu_legacy")]
+use gnu_legacy as nu_ansi_term;
+#[cfg(feature = "nu-ansi-term")]
+use nu_ansi_term;
 use std::collections::VecDeque;
 
 /// A `Color` can be one of the pre-defined ANSI colors (`Red`, `Green`, ..),
@@ -58,7 +62,7 @@ impl Color {
     }
 
     /// Convert to a `nu_ansi_term::Color` (if the `nu_ansi_term` feature is enabled).
-    #[cfg(feature = "nu-ansi-term")]
+    #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
     pub fn to_nu_ansi_term_color(&self) -> nu_ansi_term::Color {
         match self {
             Color::RGB(r, g, b) => nu_ansi_term::Color::Rgb(*r, *g, *b),
@@ -399,7 +403,7 @@ impl Style {
     }
 
     /// Convert to a `nu_ansi_term::Style` (if the `nu_ansi_term` feature is enabled).
-    #[cfg(feature = "nu-ansi-term")]
+    #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
     pub fn to_nu_ansi_term_style(&self) -> nu_ansi_term::Style {
         nu_ansi_term::Style {
             foreground: self.foreground.as_ref().map(Color::to_nu_ansi_term_color),
@@ -412,6 +416,10 @@ impl Style {
             is_reverse: self.font_style.reverse,
             is_hidden: self.font_style.hidden,
             is_strikethrough: self.font_style.strikethrough,
+            #[cfg(feature = "gnu_legacy")]
+            with_reset: true,
+            #[cfg(not(feature = "gnu_legacy"))]
+            with_reset: false,
         }
     }
 
