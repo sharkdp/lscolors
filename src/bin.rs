@@ -15,7 +15,6 @@ compile_error!("one feature must be enabled: ansi_term, nu-ansi-term, crossterm,
 
 fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::Result<()> {
     for (component, style) in ls_colors.style_for_path_components(Path::new(path)) {
-
         #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
         {
             let ansi_style = style.map(Style::to_nu_ansi_term_style).unwrap_or_default();
@@ -27,7 +26,6 @@ fn print_path(handle: &mut dyn Write, ls_colors: &LsColors, path: &str) -> io::R
             let ansi_style = style.map(Style::to_ansi_term_style).unwrap_or_default();
             write!(handle, "{}", ansi_style.paint(component.to_string_lossy()))?;
         }
-
 
         #[cfg(feature = "crossterm")]
         {
