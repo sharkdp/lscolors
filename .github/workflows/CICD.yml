@@ -173,7 +173,7 @@ jobs:
 
     - name: Run tests for arm and aarch64
       shell: bash
-      if: contains(fromJson('["arm-", "aarch64-"]'), github.event.action)
+      if: ${{ !contains(fromJson('["arm-", "aarch64-"]'), github.event.action) }}
       run: |
         $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ env.MSRV_FEATURES }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
         $BUILD_CMD test --target=${{ matrix.job.target }} --features=gnu_legacy --lib --bin ${{ needs.crate_metadata.outputs.name }}
