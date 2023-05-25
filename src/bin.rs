@@ -5,7 +5,12 @@ use std::path::Path;
 
 use lscolors::{LsColors, Style};
 
-#[cfg(all(not(feature = "nu-ansi-term"), not(feature = "gnu_legacy"),not(feature = "ansi_term"), not(feature = "crossterm")))]
+#[cfg(all(
+    not(feature = "nu-ansi-term"),
+    not(feature = "gnu_legacy"),
+    not(feature = "ansi_term"),
+    not(feature = "crossterm")
+))]
 compile_error!("one feature must be enabled: ansi_term, nu-ansi-term, crossterm, gnu_legacy");
 
 #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
