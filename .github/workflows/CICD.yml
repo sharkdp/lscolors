@@ -2,7 +2,6 @@ name: CICD
 
 env:
   CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
-  MSRV_FEATURES: "crossterm,ansi_term,nu-ansi-term"
 
 on:
   workflow_dispatch:
@@ -84,7 +83,7 @@ jobs:
         cargo doc --no-deps --document-private-items --features=crossterm,ansi_term,nu-ansi-term
 
   build:
-    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    name: ${{ matrix.job.target }} (${{ matrix.job.os }} with ${{ matrix.terminal }})
     runs-on: ${{ matrix.job.os }}
     needs: crate_metadata
     strategy:
