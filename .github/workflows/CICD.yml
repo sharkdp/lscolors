@@ -75,8 +75,9 @@ jobs:
     - name: Check documentation
       env:
         RUSTDOCFLAGS: -D warnings
-      run: cargo doc --no-deps --document-private-items --features=gnu_legacy
-      run: cargo doc --no-deps --document-private-items --features=ansi_term,crossterm,nu-ansi-term
+      run: |
+        cargo doc --no-deps --document-private-items --features=gnu_legacy
+        cargo doc --no-deps --document-private-items --features=ansi_term,crossterm,nu-ansi-term
 
   build:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
