@@ -164,18 +164,19 @@ jobs:
         echo "BIN_PATH=${BIN_PATH}" >> $GITHUB_OUTPUT
         echo "BIN_NAME=${BIN_NAME}" >> $GITHUB_OUTPUT
 
-    - name: Set testing options
-      id: test-options
+    - name: Run tests for all other targets
       shell: bash
+      if: contains(fromJson('["arm-", "aarch64-"]'), github.event.action)
       run: |
-        # test only library unit tests and binary for arm-type targets
-        unset CARGO_TEST_OPTIONS
-        unset CARGO_TEST_OPTIONS ; case ${{ matrix.job.target }} in arm-* | aarch64-*) CARGO_TEST_OPTIONS="--all-features --lib --bin ${{ needs.crate_metadata.outputs.name }}" ;; esac;
-        echo "CARGO_TEST_OPTIONS=${CARGO_TEST_OPTIONS}" >> $GITHUB_OUTPUT
+        $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ env.MSRV_FEATURES }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
+        $BUILD_CMD test --target=${{ matrix.job.target }} --features=gnu_legacy --lib --bin ${{ needs.crate_metadata.outputs.name }}
 
-    - name: Run tests
+    - name: Run tests for arm and aarch64
       shell: bash
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} ${{ steps.test-options.outputs.CARGO_TEST_OPTIONS}}
+      if: contains(fromJson('["arm-", "aarch64-"]'), github.event.action)
+      run: |
+        $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ env.MSRV_FEATURES }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
+        $BUILD_CMD test --target=${{ matrix.job.target }} --features=gnu_legacy --lib --bin ${{ needs.crate_metadata.outputs.name }}
 
     - name: Run lscolors
       shell: bash
@@ -196,6 +197,10 @@ jobs:
     - name: "Feature check: ansi_term,nu-ansi-term,crossterm"
       shell: bash
       run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features ansi_term,nu-ansi-term,crossterm
+
+    - name: "Feature check: gnu_legacy"
+      shell: bash
+      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features gnu_legacy
 
     - name: Create tarball
       id: package
