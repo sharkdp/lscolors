@@ -410,24 +410,40 @@ impl Style {
     /// ```
     /// # #[cfg(feature = "nu-ansi-term")]
     /// # {
-    /// use lscolors::Style;
     ///
-    /// let style = Style { ..Default::default() };
+    /// use lscolors::{Color, FontStyle, Style};
+    ///
+    /// let style = Style {
+    ///     font_style: FontStyle {
+    ///         bold: true,
+    ///         ..Default::default()
+    ///     },
+    ///     foreground: Some(Color::Blue),
+    ///     ..Default::default()
+    /// };
     /// let nu_ansi = style.to_nu_ansi_term_style();
-    /// assert_eq!("wow", nu_ansi.paint("wow").to_string());
+    /// assert_eq!("\x1b[1;34mwow\x1b[0m", nu_ansi.paint("wow").to_string());
     /// # }
     /// ```
     /// ## Example for gnu_legacy feature
     /// ```
     /// # #[cfg(feature = "gnu_legacy")]
     /// # {
-    /// use lscolors::Style;
     ///
-    /// let style = Style { ..Default::default() };
+    /// use lscolors::{Color, FontStyle, Style};
+    ///
+    /// let style = Style {
+    ///     font_style: FontStyle {
+    ///         bold: true,
+    ///         ..Default::default()
+    ///     },
+    ///     foreground: Some(Color::Blue),
+    ///     ..Default::default()
+    /// };
     /// let nu_ansi = style.to_nu_ansi_term_style();
     /// assert_eq!(
-    ///    "\x1b[0m\x1b[mwow\x1b[0m",
-    ///    nu_ansi.paint("wow").to_string()
+    ///     "\x1b[0m\x1b[01;34mwow\x1b[0m",
+    ///     nu_ansi.paint("wow").to_string()
     /// );
     /// # }
     /// ```
@@ -716,6 +732,9 @@ mod tests {
             ..Default::default()
         };
         let cross = style.to_crossterm_style();
-        assert_eq!("\x1b[1;34mwow\x1b[0m", cross.paint("wow").to_string());
+        assert_eq!(
+            "\x1b[38;5;4m\x1b[1mwow\x1b[0m",
+            cross.apply("wow").to_string()
+        );
     }
 }
