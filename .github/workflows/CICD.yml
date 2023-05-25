@@ -2,7 +2,7 @@ name: CICD
 
 env:
   CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
-  MSRV_FEATURES: "--all-features"
+  MSRV_FEATURES: "crossterm,ansi_term,nu-ansi-term"
 
 on:
   workflow_dispatch:
@@ -58,9 +58,13 @@ jobs:
         toolchain: ${{ needs.crate_metadata.outputs.msrv }}
         components: clippy
     - name: Run clippy (on minimum supported rust version to prevent warnings we can't fix)
-      run: cargo clippy --all-targets ${{ env.MSRV_FEATURES }}
+      run: |
+        cargo clippy --all-targets gnu_legacy
+        cargo clippy --all-targets ${{ env.MSRV_FEATURES }}
     - name: Run tests
-      run: cargo test ${{ env.MSRV_FEATURES }}
+      run: |
+        cargo test gnu_legacy
+        cargo test ${{ env.MSRV_FEATURES }}
 
   documentation:
     name: Documentation
@@ -77,7 +81,7 @@ jobs:
         RUSTDOCFLAGS: -D warnings
       run: |
         cargo doc --no-deps --document-private-items --features=gnu_legacy
-        cargo doc --no-deps --document-private-items --features=ansi_term,crossterm,nu-ansi-term
+        cargo doc --no-deps --document-private-items ${{ env.MSRV_FEATURES }}
 
   build:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})

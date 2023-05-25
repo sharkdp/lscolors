@@ -63,7 +63,7 @@ impl Color {
         }
     }
 
-    /// Convert to a `nu_ansi_term::Color` (if the `nu_ansi_term` feature is enabled).
+    /// Convert to a `nu_ansi_term::Color` (if the `nu_ansi_term` or `gnu_legacy` feature is enabled).
     #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
     pub fn to_nu_ansi_term_color(&self) -> nu_ansi_term::Color {
         match self {
