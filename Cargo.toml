@@ -19,7 +19,7 @@ authors = ["David Peter <mail@david-peter.de>"]
 rust-version = "1.62.1"
 
 [features]
-default = ["crossterm"]
+default = []
 
 [dependencies]
 ansi_term = { version = "0.12", optional = true }
