@@ -7,7 +7,7 @@ fn get_ls_style(ls_colors_env: Option<&str>, path: &str) -> Option<Style> {
     let output_gnu_ls = {
         let mut cmd = Command::new("ls");
 
-        cmd.arg("--color=always").arg("--directory").arg(path);
+        cmd.arg("--color=always").arg("-d").arg(path);
 
         if let Some(ls_colors_env) = ls_colors_env {
             cmd.env("LS_COLORS", ls_colors_env);
@@ -20,13 +20,13 @@ fn get_ls_style(ls_colors_env: Option<&str>, path: &str) -> Option<Style> {
 
     let output_gnu_ls = String::from_utf8(output_gnu_ls).expect("valid UTF-8 output from ls");
 
-    eprint!("[GNU ls output] = {}", &output_gnu_ls);
+    eprint!("[GNU ls output] = {:?}\n", &output_gnu_ls);
 
     let style_str = output_gnu_ls.trim().trim_start_matches("\x1b[0m\x1b[");
 
     let end_of_ansi_code = style_str.find(&format!("m{path}", path = path))?;
     let style_str = &style_str[0..end_of_ansi_code];
-
+    eprint!("[Style from string] = {:?}\n", &style_str);
     // For a proper integration test, we would ideally compare the output on an ANSI-escape-sequence level.
     // Unfortunately, those are not unambiguous. Both \x1b[1m as well as \x1b[01m render something in bold.
     // So instead, we trust our escape sequence parser (and its tests) and compare the output on a `Style`
