@@ -130,8 +130,7 @@ jobs:
       uses: taiki-e/install-action@v2
       with:
         tool: cross
-    - name: Install cross
-      if: ${{ !matrix.job.use-cross }}
+    - name: Install nextest
       uses: taiki-e/install-action@v2
       with:
         tool: nextest
@@ -173,15 +172,9 @@ jobs:
         echo "BIN_PATH=${BIN_PATH}" >> $GITHUB_OUTPUT
         echo "BIN_NAME=${BIN_NAME}" >> $GITHUB_OUTPUT
 
-    - name: Run tests for all other targets
+    - name: Run tests all targets
       shell: bash
-      if: ${{ !startsWith(matrix.job.target, 'a') }}
       run: cargo nextest run --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --no-capture --no-fail-fast
-
-    - name: Run tests for arm and aarch64
-      shell: bash
-      if: startsWith(matrix.job.target, 'a')
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
 
     - name: Run lscolors
       shell: bash
