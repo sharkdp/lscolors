@@ -23,7 +23,8 @@ default = []
 
 [dependencies]
 ansi_term = { version = "0.12", optional = true }
-nu-ansi-term = { version = "0.47", optional = true }
+nu-ansi-term= { package = "nu-ansi-term", git = "https://github.com/nushell/nu-ansi-term.git", optional = true }
+gnu_legacy = { package = "nu-ansi-term", git = "https://github.com/nushell/nu-ansi-term.git", features = ["gnu_legacy"], optional = true }
 crossterm = { version = "0.26", optional = true }
 
 [dev-dependencies]
@@ -32,9 +33,13 @@ tempfile = "^3"
 [[bin]]
 name = "lscolors"
 path = "src/bin.rs"
-required-features = ["nu-ansi-term"]
 
 [profile.release]
 lto = true
 strip = true
 codegen-units = 1
+
+[[test]]
+name = "integration_tests"
+path = "tests/integration_tests.rs"
+required-features = ["nu-ansi-term"]
