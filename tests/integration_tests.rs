@@ -44,7 +44,7 @@ fn assert_style_matches_ls(lscolors: &LsColors, ls_colors_env: Option<&str>, pat
 #[cfg(unix)]
 #[test]
 fn gnu_ls_compatibility_no_ls_colors() {
-    let lscolors = LsColors::default();
+    let lscolors = LsColors::empty();
 
     assert_style_matches_ls(&lscolors, None, "tests/");
     assert_style_matches_ls(&lscolors, None, "Cargo.toml");
