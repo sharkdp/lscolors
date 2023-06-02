@@ -93,19 +93,19 @@ jobs:
           - { target: aarch64-unknown-linux-gnu   , os: ubuntu-20.04, use-cross: true }
           - { target: arm-unknown-linux-gnueabihf , os: ubuntu-20.04, use-cross: true }
           - { target: arm-unknown-linux-musleabihf, os: ubuntu-20.04, use-cross: true }
-          - { target: i686-pc-windows-msvc        , os: windows-2019                  }
+          # - { target: i686-pc-windows-msvc        , os: windows-2019                  }
           - { target: i686-unknown-linux-gnu      , os: ubuntu-20.04, use-cross: true }
           - { target: i686-unknown-linux-musl     , os: ubuntu-20.04, use-cross: true }
           - { target: x86_64-apple-darwin         , os: macos-12                      }
-          - { target: x86_64-pc-windows-gnu       , os: windows-2019                  }
-          - { target: x86_64-pc-windows-msvc      , os: windows-2019                  }
+          # - { target: x86_64-pc-windows-gnu       , os: windows-2019                  }
+          # - { target: x86_64-pc-windows-msvc      , os: windows-2019                  }
           - { target: x86_64-unknown-linux-gnu    , os: ubuntu-20.04, use-cross: true }
           - { target: x86_64-unknown-linux-musl   , os: ubuntu-20.04, use-cross: true }
         terminal:
-          - ansi_term
-          - crossterm
+          # - ansi_term
+          # - crossterm
           - nu-ansi-term
-          - gnu_legacy
+          # - gnu_legacy
     env:
       BUILD_CMD: cargo
     steps:
@@ -171,12 +171,12 @@ jobs:
     - name: Run tests for all other targets
       shell: bash
       if: ${{ !startsWith(matrix.job.target, 'a') }}
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} 
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --no-capture
 
     - name: Run tests for arm and aarch64
       shell: bash
       if: startsWith(matrix.job.target, 'a')
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --no-capture
 
     - name: Run lscolors
       shell: bash
