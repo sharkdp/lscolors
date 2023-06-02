@@ -129,7 +129,7 @@ jobs:
       if: matrix.job.use-cross
       uses: taiki-e/install-action@v2
       with:
-        tool: cross
+        tool: cross,nextest
 
     - name: Overwrite build command env variable
       if: matrix.job.use-cross
@@ -171,7 +171,7 @@ jobs:
     - name: Run tests for all other targets
       shell: bash
       if: ${{ !startsWith(matrix.job.target, 'a') }}
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
+      run: cargo nextest run --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --no-capture --no-fail-fast
 
     - name: Run tests for arm and aarch64
       shell: bash
