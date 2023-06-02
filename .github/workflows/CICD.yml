@@ -171,12 +171,12 @@ jobs:
     - name: Run tests for all other targets
       shell: bash
       if: ${{ !startsWith(matrix.job.target, 'a') }}
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} 
 
     - name: Run tests for arm and aarch64
       shell: bash
       if: startsWith(matrix.job.target, 'a')
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
 
     - name: Run lscolors
       shell: bash
