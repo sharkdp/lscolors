@@ -170,13 +170,13 @@ jobs:
 
     - name: Run tests for all other targets
       shell: bash
-      if: contains(fromJson('["arm-", "aarch64-"]'), github.event.action)
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
+      if: ${{ !contains(fromJson('["arm-", "aarch64-"]'), github.event.action) }}
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
 
     - name: Run tests for arm and aarch64
       shell: bash
-      if: ${{ !contains(fromJson('["arm-", "aarch64-"]'), github.event.action) }}
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
+      if: contains(fromJson('["arm-", "aarch64-"]'), github.event.action)
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
 
     - name: Run lscolors
       shell: bash
