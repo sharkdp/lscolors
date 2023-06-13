@@ -23,10 +23,15 @@ let ansi_style = style.map(Style::to_ansi_term_style)
                       .unwrap_or_default();
 println!("{}", ansi_style.paint(path));
 
-// If you want to use `nu-ansi-term or gnu_legacy` (fork of ansi_term):
-let ansi_style = style.map(Style::to_nu_ansi_term_style)
+// If you want to use `nu-ansi-term` (fork of ansi_term) or `gnu_legacy`:
+let nu_ansi_style = style.map(Style::to_nu_ansi_term_style)
                       .unwrap_or_default();
-println!("{}", ansi_style.paint(path));
+println!("{}", nu_ansi_style.paint(path));
+
+// If you want to use `crossterm`:
+let crossterm_style = style.map(Style::to_crossterm_style)
+                      .unwrap_or_default();
+println!("{}", crossterm_style.apply(path));
 ```
 
 ## Command-line application
@@ -56,11 +61,11 @@ cargo build --release --features=nu-ansi-term --locked
 [dependencies]
 // use ansi-term coloring
 lscolors = { version = "v0.14.0", features = ["ansi_term"] }
-// use across-term coloring
+// use crossterm coloring
 lscolors = { version = "v0.14.0", features = ["crossterm"] }
 // use nu-ansi-term coloring
 lscolors = { version = "v0.14.0", features = ["nu-ansi-term"] }
-// use nu-ansi-term coloring in gnu legacy mode, double digit styles and reset codes before coloring
+// use nu-ansi-term coloring in gnu legacy mode with double digit styles
 lscolors = { version = "v0.14.0", features = ["gnu_legacy"] }
 ```
 

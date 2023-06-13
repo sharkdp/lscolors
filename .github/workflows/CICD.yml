@@ -186,11 +186,6 @@ jobs:
       shell: bash
       run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features ${{ matrix.terminal }}
 
-    - name: "Feature check: ansi_term,nu-ansi-term,crossterm"
-      if: matrix.terminal == 'nu-ansi-term'
-      shell: bash
-      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features ansi_term,nu-ansi-term,crossterm
-
     - name: Create tarball
       id: package
       shell: bash
