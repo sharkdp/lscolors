@@ -747,7 +747,10 @@ mod tests {
             ..Default::default()
         };
         let nu_ansi = style.to_nu_ansi_term_style_with_reset();
-        assert_eq!("\x1b[0m\x1b[1;34mwow\x1b[0m", nu_ansi.paint("wow").to_string());
+        assert_eq!(
+            "\x1b[0m\x1b[1;34mwow\x1b[0m",
+            nu_ansi.paint("wow").to_string()
+        );
     }
 
     #[cfg(feature = "gnu_legacy")]
@@ -762,10 +765,7 @@ mod tests {
             ..Default::default()
         };
         let nu_ansi = style.to_nu_ansi_term_style();
-        assert_eq!(
-            "\x1b[01;34mwow\x1b[0m",
-            nu_ansi.paint("wow").to_string()
-        );
+        assert_eq!("\x1b[01;34mwow\x1b[0m", nu_ansi.paint("wow").to_string());
     }
 
     #[cfg(feature = "gnu_legacy")]
