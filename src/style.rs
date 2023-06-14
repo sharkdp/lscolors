@@ -243,6 +243,8 @@ pub struct Style {
     pub underline: Option<Color>,
 }
 
+
+
 impl Style {
     /// Parse ANSI escape sequences like `38;2;255;0;100;1;4` (pink, bold, underlined).
     pub fn from_ansi_sequence(code: &str) -> Option<Style> {
@@ -465,67 +467,6 @@ impl Style {
         }
     }
 
-    /// Convert to a `nu_ansi_term::Style` (if the `nu-ansi-term` or `gnu_legacy` feature is enabled).
-    ///
-    /// ## Example for nu-ansi-term feature
-    /// ```
-    /// # #[cfg(feature = "nu-ansi-term")]
-    /// # {
-    ///
-    /// use lscolors::{Color, FontStyle, Style};
-    ///
-    /// let style = Style {
-    ///     font_style: FontStyle {
-    ///         bold: true,
-    ///         ..Default::default()
-    ///     },
-    ///     foreground: Some(Color::Blue),
-    ///     ..Default::default()
-    /// };
-    /// let nu_ansi = style.to_nu_ansi_term_style_with_reset();
-    /// assert_eq!("\x1b[0m\x1b[1;34mwow\x1b[0m", nu_ansi.paint("wow").to_string());
-    /// # }
-    /// ```
-    /// ## Example for gnu_legacy feature
-    /// ```
-    /// # #[cfg(feature = "gnu_legacy")]
-    /// # {
-    ///
-    /// use lscolors::{Color, FontStyle, Style};
-    ///
-    /// let style = Style {
-    ///     font_style: FontStyle {
-    ///         bold: true,
-    ///         ..Default::default()
-    ///     },
-    ///     foreground: Some(Color::Blue),
-    ///     ..Default::default()
-    /// };
-    /// let nu_ansi = style.to_nu_ansi_term_style_with_reset();
-    /// assert_eq!(
-    ///     "\x1b[0m\x1b[01;34mwow\x1b[0m",
-    ///     nu_ansi.paint("wow").to_string()
-    /// );
-    /// # }
-    /// ```
-    ///
-    #[cfg(any(feature = "nu-ansi-term", feature = "gnu_legacy"))]
-    pub fn to_nu_ansi_term_style_with_reset(&self) -> nu_ansi_term::Style {
-        nu_ansi_term::Style {
-            foreground: self.foreground.as_ref().map(Color::to_nu_ansi_term_color),
-            background: self.background.as_ref().map(Color::to_nu_ansi_term_color),
-            is_bold: self.font_style.bold,
-            is_dimmed: self.font_style.dimmed,
-            is_italic: self.font_style.italic,
-            is_underline: self.font_style.underline,
-            is_blink: self.font_style.rapid_blink || self.font_style.slow_blink,
-            is_reverse: self.font_style.reverse,
-            is_hidden: self.font_style.hidden,
-            is_strikethrough: self.font_style.strikethrough,
-            with_reset: true,
-        }
-    }
-
     /// Convert to a `crossterm::style::ContentStyle` (if the `crossterm` feature is enabled).
     #[cfg(feature = "crossterm")]
     pub fn to_crossterm_style(&self) -> crossterm::style::ContentStyle {
@@ -540,7 +481,7 @@ impl Style {
 
 #[cfg(test)]
 mod tests {
-    use super::{Color, FontStyle, Style};
+    use super::*;
 
     fn assert_style(
         code: &str,
@@ -746,7 +687,7 @@ mod tests {
             foreground: Some(Color::Blue),
             ..Default::default()
         };
-        let nu_ansi = style.to_nu_ansi_term_style_with_reset();
+        let nu_ansi = style.to_nu_ansi_term_style().reset_before_style();
         assert_eq!(
             "\x1b[0m\x1b[1;34mwow\x1b[0m",
             nu_ansi.paint("wow").to_string()
@@ -779,7 +720,7 @@ mod tests {
             foreground: Some(Color::Blue),
             ..Default::default()
         };
-        let nu_ansi = style.to_nu_ansi_term_style_with_reset();
+        let nu_ansi = style.to_nu_ansi_term_style().reset_before_style();
         assert_eq!(
             "\x1b[0m\x1b[01;34mwow\x1b[0m",
             nu_ansi.paint("wow").to_string()
@@ -802,7 +743,7 @@ mod tests {
         let style = Style {
             ..Default::default()
         };
-        let nu_ansi = style.to_nu_ansi_term_style_with_reset();
+        let nu_ansi = style.to_nu_ansi_term_style().reset_before_style();
         assert_eq!("\x1b[0m\x1b[mwow\x1b[0m", nu_ansi.paint("wow").to_string());
     }
 
