@@ -243,8 +243,6 @@ pub struct Style {
     pub underline: Option<Color>,
 }
 
-
-
 impl Style {
     /// Parse ANSI escape sequences like `38;2;255;0;100;1;4` (pink, bold, underlined).
     pub fn from_ansi_sequence(code: &str) -> Option<Style> {
