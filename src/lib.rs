@@ -227,7 +227,7 @@ pub struct LsColors {
 
     // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
     // preserve the exact order of the mapping in order to be consistent with `ls`.
-    suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
+    suffix_mapping: HashMap<FileNameSuffix, Option<Style>>,
 }
 
 impl Default for LsColors {
@@ -245,7 +245,7 @@ impl LsColors {
     pub fn empty() -> Self {
         LsColors {
             indicator_mapping: HashMap::new(),
-            suffix_mapping: vec![],
+            suffix_mapping: HashMap::new(),
         }
     }
 
@@ -273,8 +273,11 @@ impl LsColors {
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 let style = Style::from_ansi_sequence(ansi_style);
                 if let Some(suffix) = entry.strip_prefix('*') {
-                    self.suffix_mapping
-                        .push((suffix.to_string().to_ascii_lowercase(), style));
+                    // in LS the latest entry takes precedence
+                    // hashmap allows us to overwrite already present entries with updated values
+                    // thus taking the latest value given
+                    // self.suffix_mapping.retain(|&k, _| { k.ends_with(suffix.to_string()) });
+                    self.suffix_mapping.insert(suffix.to_string(), style);
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
@@ -397,25 +400,118 @@ impl LsColors {
 
     /// Get the ANSI style for a colorable path.
     pub fn style_for<F: Colorable>(&self, file: &F) -> Option<&Style> {
+        // go to directly to indicator if not a regular file
         let indicator = self.indicator_for(file);
+        if indicator != Indicator::RegularFile {
+            return self.style_for_indicator(indicator);
+        };
 
-        if indicator == Indicator::RegularFile {
-            // Note: using '.to_str()' here means that filename
-            // matching will not work with invalid-UTF-8 paths.
-            let filename = file.file_name().to_str()?.to_ascii_lowercase();
+        // Note: using '.to_str()' here means that filename
+        // matching will not work with invalid-UTF-8 paths.
+        let filename = file.file_name();
+        let filename = filename.to_str()?;
 
-            // We need to traverse LS_COLORS from back to front
-            // to be consistent with `ls`:
-            for (suffix, style) in self.suffix_mapping.iter().rev() {
-                // Note: For some reason, 'ends_with' is much
-                // slower if we omit `.as_str()` here:
-                if filename.ends_with(suffix.as_str()) {
-                    return style.as_ref();
-                }
-            }
+        // best match search go first -> e.g. *img.jpg matches before *.jpg
+        // use vec, hashmap would lead to lifetimes
+        let vec: Vec<(String, Option<Style>)> = self.suffix_mapping.clone().into_iter().collect();
+        let best_match_sensitive = vec
+            .iter()
+            .filter(|(a, _)| filename.ends_with(a))
+            .max_by_key(|(a, _)| a);
+        let best_match_insensitive = vec
+            .iter()
+            .filter(|(a, _)| {
+                filename
+                    .to_ascii_lowercase()
+                    .as_str()
+                    .ends_with(&a.to_ascii_lowercase())
+            })
+            .max_by_key(|(a, _)| a);
+
+        // Matrix
+        //  bms: some //
+        //      bmi must also be some (y.y)
+        //          all same: insensitive match check (y.y.y)
+        //          different: sensitive match check (y.y.n)
+        //      bmi none: not possible (y.n)
+        //  bms: none // bmi either some or none (n.*)
+        //      bmi some: // can be that bmi is all same or different (n.y)
+        //          all same: insensitive match check (n.y.y)
+        //          different: go to indicator (n.y.n)
+        //      bmi none: get out of here and go to indicators (n.n)
+
+        // bms: none, bmi: none -> return indicator styling (n.n)
+        if best_match_sensitive.is_none() && best_match_insensitive.is_none() {
+            return self.style_for_indicator(indicator);
         }
 
-        self.style_for_indicator(indicator)
+        // bmi: check if suffixes are the same (n.y.*)
+        let occurences_insensitive_suffix_only = match best_match_insensitive {
+            Some((suffix, _)) => self
+                .suffix_mapping
+                .clone()
+                .into_iter()
+                .filter(|(a, _)| a.to_ascii_lowercase() == suffix.to_ascii_lowercase())
+                .count(),
+            None => 0,
+        };
+
+        // bmi: check if suffix and styles are the same (y.y.*, n.y.*)
+        let occurences_insensitive = match best_match_insensitive {
+            Some((suffix, style)) => self
+                .suffix_mapping
+                .clone()
+                .into_iter()
+                .filter(|(a, b)| {
+                    a.to_ascii_lowercase() == suffix.to_ascii_lowercase() && b == style
+                })
+                .count(),
+            None => 0,
+        };
+
+        // bms: take care of none, check if suffix and styles are the same (y.y.*, n.y.*)
+        let occurences_sensitive = match best_match_sensitive {
+            Some((suffix, style)) => self
+                .suffix_mapping
+                .clone()
+                .into_iter()
+                .filter(|(a, b)| {
+                    a.to_ascii_lowercase() == suffix.to_ascii_lowercase() && b == style
+                })
+                .count(),
+            None => 0,
+        };
+
+        if occurences_sensitive == 0 {
+            // n.y.*
+            if occurences_insensitive < occurences_insensitive_suffix_only {
+                // Case Sensitive! -> get out (n.y.n)
+                return self.style_for_indicator(indicator);
+            } else {
+                // Case Insensitive! (n.y.y)
+                return self
+                    .suffix_mapping
+                    .get(&best_match_insensitive.unwrap().0)
+                    .unwrap()
+                    .as_ref();
+            }
+        } else {
+            if occurences_sensitive < occurences_insensitive_suffix_only {
+                // Case Sensitive! (y.y.n)
+                return self
+                    .suffix_mapping
+                    .get(&best_match_sensitive.unwrap().0)
+                    .unwrap()
+                    .as_ref();
+            } else {
+                // Case Insensitive! (y.y.y)
+                return self
+                    .suffix_mapping
+                    .get(&best_match_insensitive.unwrap().0)
+                    .unwrap()
+                    .as_ref();
+            }
+        }
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
@@ -535,23 +631,33 @@ mod tests {
 
     #[test]
     fn style_for_path_uses_correct_ordering() {
-        let lscolors = LsColors::from_string("*.foo=01;35:*README.foo=33;44");
+        let lscolors = LsColors::from_string("*.foo=01;35::*.FOO=01;33:*README.foo=33;44");
 
-        let style_foo = lscolors.style_for_path("some/folder/dummy.foo").unwrap();
-        assert_eq!(FontStyle::bold(), style_foo.font_style);
-        assert_eq!(Some(Color::Magenta), style_foo.foreground);
-        assert_eq!(None, style_foo.background);
+        let f1 = PathBuf::from("some/folder/dummy.foo");
+        let f2 = PathBuf::from("some/other/folder/README.foo");
 
-        let style_readme = lscolors
-            .style_for_path("some/other/folder/README.foo")
-            .unwrap();
-        assert_eq!(FontStyle::default(), style_readme.font_style);
-        assert_eq!(Some(Color::Yellow), style_readme.foreground);
-        assert_eq!(Some(Color::Blue), style_readme.background);
+        // Foo Test
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.foreground = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "foo_test");
+        }
+
+        // Readme Test
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.foreground = Some(Color::Yellow);
+            left.background = Some(Color::Blue);
+            assert_eq!(Some(left), right.cloned(), "foo_readme_test");
+        }
     }
 
     #[test]
-    fn style_for_path_uses_lowercase_matching() {
+    fn style_for_path_falls_back_to_lowercase_matching() {
+        // this should only work when *.o is not defined
         let lscolors = LsColors::from_string("*.O=01;35");
 
         let style_artifact = lscolors.style_for_path("artifact.o").unwrap();
@@ -785,5 +891,107 @@ mod tests {
         let lscolors = LsColors::from_string("*.png=01;35:*.png=0");
         let style = lscolors.style_for_path(&tmp_file);
         assert_eq!(None, style);
+    }
+
+    #[test]
+    fn test_case_sensitive() {
+        let lscolors = LsColors::from_string("*.jpg=01;45:*.JPG=03;46");
+
+        let f1 = PathBuf::from("img1.jpg");
+        let f2 = PathBuf::from("img2.JPG");
+        let f3 = PathBuf::from("img3.jPg");
+
+        // File 1 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test1");
+        }
+        // File 2 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.background = Some(Color::Cyan);
+            left.font_style.italic = true;
+            assert_eq!(Some(left), right.cloned(), "test2");
+        }
+        // File 3 - not part of LS_COLORS - should not be colored since the other two are different values
+        {
+            let right = lscolors.style_for_path(&f3);
+            let mut left = Style::default();
+            left.background = Some(Color::Cyan);
+            left.font_style.italic = true;
+            assert_eq!(None, right.cloned(), "test3");
+        }
+    }
+
+    #[test]
+    fn test_case_insensitive() {
+        let lscolors = LsColors::from_string("*.jpg=01;45:*.JPG=01;45");
+
+        let f1 = PathBuf::from("img1.jpg");
+        let f2 = PathBuf::from("img2.JPG");
+        let f3 = PathBuf::from("img3.jPg");
+
+        // File 1 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test1");
+        }
+        // File 2 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test2");
+        }
+        // File 3 - not part of LS_COLORS - should be still colored, since JPG and jpg are same color
+        {
+            let right = lscolors.style_for_path(&f3);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test3");
+        }
+    }
+
+    #[test]
+    fn test_overwrite_duplicate_coloring_input() {
+        let lscolors = LsColors::from_string("*.jpg=01;43:*.jpg=01;45:*.JPG=01;41:*.JPG=01;45");
+
+        let f1 = PathBuf::from("img1.jpg");
+        let f2 = PathBuf::from("img2.JPG");
+        let f3 = PathBuf::from("img3.jPg");
+
+        // File 1 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test1");
+        }
+        // File 2 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test2");
+        }
+        // File 3 - not part of LS_COLORS - should be still colored, since JPG and jpg are same color
+        {
+            let right = lscolors.style_for_path(&f3);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test3");
+        }
     }
 }

@@ -3,7 +3,14 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use lscolors::{LsColors, Style};
+use lscolors::LsColors;
+#[cfg(any(
+    feature = "nu-ansi-term",
+    feature = "gnu_legacy",
+    feature = "ansi_term",
+    feature = "crossterm"
+))]
+use lscolors::Style;
 
 #[cfg(all(
     not(feature = "nu-ansi-term"),
