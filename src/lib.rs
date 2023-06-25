@@ -225,8 +225,7 @@ const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:
 pub struct LsColors {
     indicator_mapping: HashMap<Indicator, Style>,
 
-    // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
-    // preserve the exact order of the mapping in order to be consistent with `ls`.
+    // Note: HashMap will update existing values if parsed again, which mirrors the LS parsing behviour
     suffix_mapping: HashMap<FileNameSuffix, Option<Style>>,
 }
 
@@ -273,10 +272,6 @@ impl LsColors {
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 let style = Style::from_ansi_sequence(ansi_style);
                 if let Some(suffix) = entry.strip_prefix('*') {
-                    // in LS the latest entry takes precedence
-                    // hashmap allows us to overwrite already present entries with updated values
-                    // thus taking the latest value given
-                    // self.suffix_mapping.retain(|&k, _| { k.ends_with(suffix.to_string()) });
                     self.suffix_mapping.insert(suffix.to_string(), style);
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
@@ -631,7 +626,7 @@ mod tests {
 
     #[test]
     fn style_for_path_uses_correct_ordering() {
-        let lscolors = LsColors::from_string("*.foo=01;35::*.FOO=01;33:*README.foo=33;44");
+        let lscolors = LsColors::from_string("*.foo=01;35:*.FOO=01;33:*README.foo=33;44");
 
         let f1 = PathBuf::from("some/folder/dummy.foo");
         let f2 = PathBuf::from("some/other/folder/README.foo");
