@@ -224,9 +224,7 @@ const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:
 #[derive(Debug, Clone)]
 pub struct LsColors {
     indicator_mapping: HashMap<Indicator, Style>,
-
-    // Note: HashMap will update existing values if parsed again, which mirrors the LS parsing behviour
-    suffix_mapping: HashMap<FileNameSuffix, Option<Style>>,
+    suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
 }
 
 impl Default for LsColors {
@@ -244,7 +242,7 @@ impl LsColors {
     pub fn empty() -> Self {
         LsColors {
             indicator_mapping: HashMap::new(),
-            suffix_mapping: HashMap::new(),
+            suffix_mapping: vec![],
         }
     }
 
@@ -266,13 +264,15 @@ impl LsColors {
     }
 
     fn add_from_string(&mut self, input: &str) {
+        // use hashmap to make sure only the last value of each suffix will be used
+        let mut suffix_hashmap = HashMap::new();
         for entry in input.split(':') {
             let parts: Vec<_> = entry.split('=').collect();
 
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 let style = Style::from_ansi_sequence(ansi_style);
                 if let Some(suffix) = entry.strip_prefix('*') {
-                    self.suffix_mapping.insert(suffix.to_string(), style);
+                    suffix_hashmap.insert(suffix.to_string(), style);
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
@@ -282,6 +282,8 @@ impl LsColors {
                 }
             }
         }
+        // parse hashmap into final vector
+        self.suffix_mapping = suffix_hashmap.into_iter().collect();
     }
 
     /// Get the ANSI style for a given path.
@@ -406,107 +408,37 @@ impl LsColors {
         let filename = file.file_name();
         let filename = filename.to_str()?;
 
-        // best match search go first -> e.g. *img.jpg matches before *.jpg
-        // use vec, hashmap would lead to lifetimes
-        let vec: Vec<(String, Option<Style>)> = self.suffix_mapping.clone().into_iter().collect();
-        let best_match_sensitive = vec
+        // find best LS_COLORS key to use, case sensitive
+        let best_match_sensitive = self
+            .suffix_mapping
             .iter()
             .filter(|(a, _)| filename.ends_with(a))
             .max_by_key(|(a, _)| a);
-        let best_match_insensitive = vec
-            .iter()
-            .filter(|(a, _)| {
-                filename
-                    .to_ascii_lowercase()
-                    .as_str()
-                    .ends_with(&a.to_ascii_lowercase())
-            })
-            .max_by_key(|(a, _)| a);
-
-        // Matrix
-        //  bms: some //
-        //      bmi must also be some (y.y)
-        //          all same: insensitive match check (y.y.y)
-        //          different: sensitive match check (y.y.n)
-        //      bmi none: not possible (y.n)
-        //  bms: none // bmi either some or none (n.*)
-        //      bmi some: // can be that bmi is all same or different (n.y)
-        //          all same: insensitive match check (n.y.y)
-        //          different: go to indicator (n.y.n)
-        //      bmi none: get out of here and go to indicators (n.n)
-
-        // bms: none, bmi: none -> return indicator styling (n.n)
-        if best_match_sensitive.is_none() && best_match_insensitive.is_none() {
-            return self.style_for_indicator(indicator);
+        if let Some(bms) = best_match_sensitive {
+            return bms.1.as_ref();
         }
 
-        // bmi: check if suffixes are the same (n.y.*)
-        let occurences_insensitive_suffix_only = match best_match_insensitive {
-            Some((suffix, _)) => self
-                .suffix_mapping
-                .clone()
-                .into_iter()
-                .filter(|(a, _)| a.to_ascii_lowercase() == suffix.to_ascii_lowercase())
-                .count(),
-            None => 0,
-        };
+        // nothing found case sensitive? try case insensitive
+        let mut best_match_insensi_iter = self.suffix_mapping.iter().filter(|(a, _)| {
+            filename
+                .to_ascii_lowercase()
+                .as_str()
+                .ends_with(&a.to_ascii_lowercase())
+        });
 
-        // bmi: check if suffix and styles are the same (y.y.*, n.y.*)
-        let occurences_insensitive = match best_match_insensitive {
-            Some((suffix, style)) => self
-                .suffix_mapping
-                .clone()
-                .into_iter()
-                .filter(|(a, b)| {
-                    a.to_ascii_lowercase() == suffix.to_ascii_lowercase() && b == style
-                })
-                .count(),
-            None => 0,
-        };
-
-        // bms: take care of none, check if suffix and styles are the same (y.y.*, n.y.*)
-        let occurences_sensitive = match best_match_sensitive {
-            Some((suffix, style)) => self
-                .suffix_mapping
-                .clone()
-                .into_iter()
-                .filter(|(a, b)| {
-                    a.to_ascii_lowercase() == suffix.to_ascii_lowercase() && b == style
-                })
-                .count(),
-            None => 0,
-        };
-
-        if occurences_sensitive == 0 {
-            // n.y.*
-            if occurences_insensitive < occurences_insensitive_suffix_only {
-                // Case Sensitive! -> get out (n.y.n)
-                return self.style_for_indicator(indicator);
-            } else {
-                // Case Insensitive! (n.y.y)
-                return self
-                    .suffix_mapping
-                    .get(&best_match_insensitive.unwrap().0)
-                    .unwrap()
-                    .as_ref();
-            }
-        } else {
-            if occurences_sensitive < occurences_insensitive_suffix_only {
-                // Case Sensitive! (y.y.n)
-                return self
-                    .suffix_mapping
-                    .get(&best_match_sensitive.unwrap().0)
-                    .unwrap()
-                    .as_ref();
-            } else {
-                // Case Insensitive! (y.y.y)
-                return self
-                    .suffix_mapping
-                    .get(&best_match_insensitive.unwrap().0)
-                    .unwrap()
-                    .as_ref();
+        let best_match_insensitive = best_match_insensi_iter.clone().max_by_key(|(a, _)| a);
+        // nothing found, again? -> go to indicator coloring
+        if let Some((_, style_option)) = best_match_insensitive {
+            let all_suffixes_have_the_same_style =
+                best_match_insensi_iter.all(|(_, b)| b == style_option);
+            if all_suffixes_have_the_same_style {
+                // all endings have the same style, color as per found style
+                return style_option.as_ref();
             }
         }
+
+        // all other options, dont do anything
+        return self.style_for_indicator(indicator);
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
