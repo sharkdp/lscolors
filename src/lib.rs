@@ -224,9 +224,6 @@ const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:
 #[derive(Debug, Clone)]
 pub struct LsColors {
     indicator_mapping: HashMap<Indicator, Style>,
-
-    // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
-    // preserve the exact order of the mapping in order to be consistent with `ls`.
     suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
 }
 
@@ -267,14 +264,15 @@ impl LsColors {
     }
 
     fn add_from_string(&mut self, input: &str) {
+        // use hashmap to make sure only the last value of each suffix will be used
+        let mut suffix_hashmap = HashMap::new();
         for entry in input.split(':') {
             let parts: Vec<_> = entry.split('=').collect();
 
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 let style = Style::from_ansi_sequence(ansi_style);
                 if let Some(suffix) = entry.strip_prefix('*') {
-                    self.suffix_mapping
-                        .push((suffix.to_string().to_ascii_lowercase(), style));
+                    suffix_hashmap.insert(suffix.to_string(), style);
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
@@ -284,6 +282,8 @@ impl LsColors {
                 }
             }
         }
+        // parse hashmap into final vector
+        self.suffix_mapping = suffix_hashmap.into_iter().collect();
     }
 
     /// Get the ANSI style for a given path.
@@ -397,25 +397,48 @@ impl LsColors {
 
     /// Get the ANSI style for a colorable path.
     pub fn style_for<F: Colorable>(&self, file: &F) -> Option<&Style> {
+        // go to directly to indicator if not a regular file
         let indicator = self.indicator_for(file);
+        if indicator != Indicator::RegularFile {
+            return self.style_for_indicator(indicator);
+        };
 
-        if indicator == Indicator::RegularFile {
-            // Note: using '.to_str()' here means that filename
-            // matching will not work with invalid-UTF-8 paths.
-            let filename = file.file_name().to_str()?.to_ascii_lowercase();
+        // Note: using '.to_str()' here means that filename
+        // matching will not work with invalid-UTF-8 paths.
+        let filename = file.file_name();
+        let filename = filename.to_str()?;
 
-            // We need to traverse LS_COLORS from back to front
-            // to be consistent with `ls`:
-            for (suffix, style) in self.suffix_mapping.iter().rev() {
-                // Note: For some reason, 'ends_with' is much
-                // slower if we omit `.as_str()` here:
-                if filename.ends_with(suffix.as_str()) {
-                    return style.as_ref();
-                }
+        // find best LS_COLORS key to use, case sensitive
+        let best_match_sensitive = self
+            .suffix_mapping
+            .iter()
+            .filter(|(a, _)| filename.ends_with(a))
+            .max_by_key(|(a, _)| a);
+        if let Some(bms) = best_match_sensitive {
+            return bms.1.as_ref();
+        }
+
+        // nothing found case sensitive? try case insensitive
+        let mut best_match_insensi_iter = self.suffix_mapping.iter().filter(|(a, _)| {
+            filename
+                .to_ascii_lowercase()
+                .as_str()
+                .ends_with(&a.to_ascii_lowercase())
+        });
+
+        let best_match_insensitive = best_match_insensi_iter.clone().max_by_key(|(a, _)| a);
+        // nothing found, again? -> go to indicator coloring
+        if let Some((_, style_option)) = best_match_insensitive {
+            let all_suffixes_have_the_same_style =
+                best_match_insensi_iter.all(|(_, b)| b == style_option);
+            if all_suffixes_have_the_same_style {
+                // all endings have the same style, color as per found style
+                return style_option.as_ref();
             }
         }
 
-        self.style_for_indicator(indicator)
+        // all other options, dont do anything
+        return self.style_for_indicator(indicator);
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
@@ -535,23 +558,33 @@ mod tests {
 
     #[test]
     fn style_for_path_uses_correct_ordering() {
-        let lscolors = LsColors::from_string("*.foo=01;35:*README.foo=33;44");
+        let lscolors = LsColors::from_string("*.foo=01;35:*.FOO=01;33:*README.foo=33;44");
 
-        let style_foo = lscolors.style_for_path("some/folder/dummy.foo").unwrap();
-        assert_eq!(FontStyle::bold(), style_foo.font_style);
-        assert_eq!(Some(Color::Magenta), style_foo.foreground);
-        assert_eq!(None, style_foo.background);
+        let f1 = PathBuf::from("some/folder/dummy.foo");
+        let f2 = PathBuf::from("some/other/folder/README.foo");
 
-        let style_readme = lscolors
-            .style_for_path("some/other/folder/README.foo")
-            .unwrap();
-        assert_eq!(FontStyle::default(), style_readme.font_style);
-        assert_eq!(Some(Color::Yellow), style_readme.foreground);
-        assert_eq!(Some(Color::Blue), style_readme.background);
+        // Foo Test
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.foreground = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "foo_test");
+        }
+
+        // Readme Test
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.foreground = Some(Color::Yellow);
+            left.background = Some(Color::Blue);
+            assert_eq!(Some(left), right.cloned(), "foo_readme_test");
+        }
     }
 
     #[test]
-    fn style_for_path_uses_lowercase_matching() {
+    fn style_for_path_falls_back_to_lowercase_matching() {
+        // this should only work when *.o is not defined
         let lscolors = LsColors::from_string("*.O=01;35");
 
         let style_artifact = lscolors.style_for_path("artifact.o").unwrap();
@@ -785,5 +818,107 @@ mod tests {
         let lscolors = LsColors::from_string("*.png=01;35:*.png=0");
         let style = lscolors.style_for_path(&tmp_file);
         assert_eq!(None, style);
+    }
+
+    #[test]
+    fn test_case_sensitive() {
+        let lscolors = LsColors::from_string("*.jpg=01;45:*.JPG=03;46");
+
+        let f1 = PathBuf::from("img1.jpg");
+        let f2 = PathBuf::from("img2.JPG");
+        let f3 = PathBuf::from("img3.jPg");
+
+        // File 1 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test1");
+        }
+        // File 2 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.background = Some(Color::Cyan);
+            left.font_style.italic = true;
+            assert_eq!(Some(left), right.cloned(), "test2");
+        }
+        // File 3 - not part of LS_COLORS - should not be colored since the other two are different values
+        {
+            let right = lscolors.style_for_path(&f3);
+            let mut left = Style::default();
+            left.background = Some(Color::Cyan);
+            left.font_style.italic = true;
+            assert_eq!(None, right.cloned(), "test3");
+        }
+    }
+
+    #[test]
+    fn test_case_insensitive() {
+        let lscolors = LsColors::from_string("*.jpg=01;45:*.JPG=01;45");
+
+        let f1 = PathBuf::from("img1.jpg");
+        let f2 = PathBuf::from("img2.JPG");
+        let f3 = PathBuf::from("img3.jPg");
+
+        // File 1 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test1");
+        }
+        // File 2 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test2");
+        }
+        // File 3 - not part of LS_COLORS - should be still colored, since JPG and jpg are same color
+        {
+            let right = lscolors.style_for_path(&f3);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test3");
+        }
+    }
+
+    #[test]
+    fn test_overwrite_duplicate_coloring_input() {
+        let lscolors = LsColors::from_string("*.jpg=01;43:*.jpg=01;45:*.JPG=01;41:*.JPG=01;45");
+
+        let f1 = PathBuf::from("img1.jpg");
+        let f2 = PathBuf::from("img2.JPG");
+        let f3 = PathBuf::from("img3.jPg");
+
+        // File 1 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f1);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test1");
+        }
+        // File 2 - part of LS_COLORS
+        {
+            let right = lscolors.style_for_path(&f2);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test2");
+        }
+        // File 3 - not part of LS_COLORS - should be still colored, since JPG and jpg are same color
+        {
+            let right = lscolors.style_for_path(&f3);
+            let mut left = Style::default();
+            left.background = Some(Color::Magenta);
+            left.font_style.bold = true;
+            assert_eq!(Some(left), right.cloned(), "test3");
+        }
     }
 }
