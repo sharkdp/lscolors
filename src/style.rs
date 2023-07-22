@@ -412,6 +412,7 @@ impl Style {
             is_reverse: self.font_style.reverse,
             is_hidden: self.font_style.hidden,
             is_strikethrough: self.font_style.strikethrough,
+            prefix_with_reset: false,
         }
     }
 
