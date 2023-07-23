@@ -16,7 +16,7 @@ version = "0.14.0"
 readme = "README.md"
 edition = "2021"
 authors = ["David Peter <mail@david-peter.de>"]
-rust-version = "1.62.1"
+rust-version = "1.63.0"
 
 [features]
 default = []
