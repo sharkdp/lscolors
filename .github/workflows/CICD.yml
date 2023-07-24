@@ -163,8 +163,8 @@ jobs:
       shell: bash
       run: |
         # test only library unit tests and binary for arm-type targets
-        unset CARGO_TEST_OPTIONS
-        unset CARGO_TEST_OPTIONS ; case ${{ matrix.job.target }} in arm-* | aarch64-*) CARGO_TEST_OPTIONS="--all-features --lib --bin ${{ needs.crate_metadata.outputs.name }}" ;; esac;
+        CARGO_TEST_OPTIONS="--all-features"
+        case ${{ matrix.job.target }} in arm-* | aarch64-*) CARGO_TEST_OPTIONS="--all-features --lib --bin ${{ needs.crate_metadata.outputs.name }}" ;; esac;
         echo "CARGO_TEST_OPTIONS=${CARGO_TEST_OPTIONS}" >> $GITHUB_OUTPUT
 
     - name: Run tests
