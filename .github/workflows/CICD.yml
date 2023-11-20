@@ -2,7 +2,6 @@ name: CICD
 
 env:
   CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
-  MSRV_FEATURES: "--all-features"
 
 on:
   workflow_dispatch:
@@ -58,9 +57,13 @@ jobs:
         toolchain: ${{ needs.crate_metadata.outputs.msrv }}
         components: clippy
     - name: Run clippy (on minimum supported rust version to prevent warnings we can't fix)
-      run: cargo clippy --all-targets ${{ env.MSRV_FEATURES }}
+      run: |
+        cargo clippy --all-targets --features=gnu_legacy
+        cargo clippy --all-targets --features=crossterm,ansi_term,nu-ansi-term
     - name: Run tests
-      run: cargo test ${{ env.MSRV_FEATURES }}
+      run: |
+        cargo test --features=gnu_legacy
+        cargo test --features=crossterm,ansi_term,nu-ansi-term
 
   documentation:
     name: Documentation
@@ -75,10 +78,12 @@ jobs:
     - name: Check documentation
       env:
         RUSTDOCFLAGS: -D warnings
-      run: cargo doc --no-deps --document-private-items --all-features
+      run: |
+        cargo doc --no-deps --document-private-items --features=gnu_legacy
+        cargo doc --no-deps --document-private-items --features=crossterm,ansi_term,nu-ansi-term
 
   build:
-    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    name: ${{ matrix.job.target }} (${{ matrix.job.os }} with ${{ matrix.terminal }})
     runs-on: ${{ matrix.job.os }}
     needs: crate_metadata
     strategy:
@@ -96,6 +101,11 @@ jobs:
           - { target: x86_64-pc-windows-msvc      , os: windows-2019                  }
           - { target: x86_64-unknown-linux-gnu    , os: ubuntu-20.04, use-cross: true }
           - { target: x86_64-unknown-linux-musl   , os: ubuntu-20.04, use-cross: true }
+        terminal:
+          - ansi_term
+          - crossterm
+          - nu-ansi-term
+          - gnu_legacy
     env:
       BUILD_CMD: cargo
     steps:
@@ -138,7 +148,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: $BUILD_CMD build --release --target=${{ matrix.job.target }} --features=nu-ansi-term
+      run: $BUILD_CMD build --release --target=${{ matrix.job.target }} --features=${{ matrix.terminal }}
 
     - name: Set binary name & path
       id: bin
@@ -158,38 +168,23 @@ jobs:
         echo "BIN_PATH=${BIN_PATH}" >> $GITHUB_OUTPUT
         echo "BIN_NAME=${BIN_NAME}" >> $GITHUB_OUTPUT
 
-    - name: Set testing options
-      id: test-options
+    - name: Run tests for all other targets
       shell: bash
-      run: |
-        # test only library unit tests and binary for arm-type targets
-        unset CARGO_TEST_OPTIONS
-        unset CARGO_TEST_OPTIONS ; case ${{ matrix.job.target }} in arm-* | aarch64-*) CARGO_TEST_OPTIONS="--all-features --lib --bin ${{ needs.crate_metadata.outputs.name }}" ;; esac;
-        echo "CARGO_TEST_OPTIONS=${CARGO_TEST_OPTIONS}" >> $GITHUB_OUTPUT
+      if: ${{ !startsWith(matrix.job.target, 'a') }}
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
 
-    - name: Run tests
+    - name: Run tests for arm and aarch64
       shell: bash
-      run: $BUILD_CMD test --target=${{ matrix.job.target }} ${{ steps.test-options.outputs.CARGO_TEST_OPTIONS}}
+      if: startsWith(matrix.job.target, 'a')
+      run: $BUILD_CMD test --target=${{ matrix.job.target }} --features=${{ matrix.terminal }} --lib --bin ${{ needs.crate_metadata.outputs.name }}
 
     - name: Run lscolors
       shell: bash
-      run: $BUILD_CMD run --target=${{ matrix.job.target }} --features nu-ansi-term -- Cargo.toml Cargo.lock LICENSE-APACHE LICENSE-MIT README.md src/lib.rs
+      run: $BUILD_CMD run --target=${{ matrix.job.target }} --features ${{ matrix.terminal }} -- Cargo.toml Cargo.lock LICENSE-APACHE LICENSE-MIT README.md src/lib.rs
 
-    - name: "Feature check: ansi_term"
+    - name: "Feature check: ${{ matrix.terminal }}"
       shell: bash
-      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features ansi_term
-
-    - name: "Feature check: nu-ansi-term"
-      shell: bash
-      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features nu-ansi-term
-
-    - name: "Feature check: crossterm"
-      shell: bash
-      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features crossterm
-
-    - name: "Feature check: ansi_term,nu-ansi-term,crossterm"
-      shell: bash
-      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features ansi_term,nu-ansi-term,crossterm
+      run: $BUILD_CMD check --target=${{ matrix.job.target }} --verbose --lib --features ${{ matrix.terminal }}
 
     - name: Create tarball
       id: package

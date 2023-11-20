@@ -23,16 +23,22 @@ let ansi_style = style.map(Style::to_ansi_term_style)
                       .unwrap_or_default();
 println!("{}", ansi_style.paint(path));
 
-// If you want to use `nu-ansi-term` (fork of ansi_term):
-let ansi_style = style.map(Style::to_nu_ansi_term_style)
+// If you want to use `nu-ansi-term` (fork of ansi_term) or `gnu_legacy`:
+let nu_ansi_style = style.map(Style::to_nu_ansi_term_style)
                       .unwrap_or_default();
-println!("{}", ansi_style.paint(path));
+println!("{}", nu_ansi_style.paint(path));
+
+// If you want to use `crossterm`:
+let crossterm_style = style.map(Style::to_crossterm_style)
+                      .unwrap_or_default();
+println!("{}", crossterm_style.apply(path));
 ```
 
 ## Command-line application
 
 This crate also comes with a small command-line program `lscolors` that
 can be used to colorize the output of other commands:
+
 ```bash
 > find . -maxdepth 2 | lscolors
 
@@ -42,16 +48,33 @@ can be used to colorize the output of other commands:
 You can install it by running `cargo install lscolors` or by downloading one
 of the prebuilt binaries from the [release page](https://github.com/sharkdp/lscolors/releases).
 If you want to build the application from source, you can run
+
 ```rs
 cargo build --release --features=nu-ansi-term --locked
+```
+
+## Features
+
+```rust
+// Cargo.toml
+
+[dependencies]
+// use ansi-term coloring
+lscolors = { version = "v0.14.0", features = ["ansi_term"] }
+// use crossterm coloring
+lscolors = { version = "v0.14.0", features = ["crossterm"] }
+// use nu-ansi-term coloring
+lscolors = { version = "v0.14.0", features = ["nu-ansi-term"] }
+// use nu-ansi-term coloring in gnu legacy mode with double digit styles
+lscolors = { version = "v0.14.0", features = ["gnu_legacy"] }
 ```
 
 ## License
 
 Licensed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
 
