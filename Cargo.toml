@@ -19,12 +19,12 @@ authors = ["David Peter <mail@david-peter.de>"]
 rust-version = "1.63.0"
 
 [features]
-default = []
+default = ["nu-ansi-term"]
+gnu_legacy = ["nu-ansi-term/gnu_legacy"]
 
 [dependencies]
 ansi_term = { version = "0.12", optional = true }
 nu-ansi-term = { version = "0.49", optional = true }
-gnu_legacy = { package = "nu-ansi-term", version = "0.49", features = ["gnu_legacy"], optional = true }
 crossterm = { version = "0.26", optional = true }
 
 [dev-dependencies]
