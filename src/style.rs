@@ -2,10 +2,6 @@
 //!
 //! For more information, see
 //! [ANSI escape code (Wikipedia)](https://en.wikipedia.org/wiki/ANSI_escape_code).
-#[cfg(all(feature = "nu-ansi-term", feature = "gnu_legacy"))]
-compile_error!("`nu-ansi-term` and `gnu_legacy` may not be used at the same time");
-#[cfg(feature = "gnu_legacy")]
-use gnu_legacy as nu_ansi_term;
 #[cfg(feature = "nu-ansi-term")]
 use nu_ansi_term;
 use std::collections::VecDeque;
@@ -408,7 +404,7 @@ impl Style {
     ///
     /// ## Example for nu-ansi-term feature
     /// ```
-    /// # #[cfg(feature = "nu-ansi-term")]
+    /// # #[cfg(all(feature = "nu-ansi-term", not(feature = "gnu_legacy")))]
     /// # {
     ///
     /// use lscolors::{Color, FontStyle, Style};
@@ -662,7 +658,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "nu-ansi-term")]
+    #[cfg(all(feature = "nu-ansi-term", not(feature = "gnu_legacy")))]
     #[test]
     fn coloring_nu_ansi_term() {
         let style = Style {
@@ -677,7 +673,7 @@ mod tests {
         assert_eq!("\x1b[1;34mwow\x1b[0m", nu_ansi.paint("wow").to_string());
     }
 
-    #[cfg(feature = "nu-ansi-term")]
+    #[cfg(all(feature = "nu-ansi-term", not(feature = "gnu_legacy")))]
     #[test]
     fn coloring_nu_ansi_term_with_reset() {
         let style = Style {
