@@ -402,20 +402,30 @@ impl LsColors {
         if indicator == Indicator::RegularFile {
             // Note: using '.to_str()' here means that filename
             // matching will not work with invalid-UTF-8 paths.
-            let filename = file.file_name().to_str()?.to_ascii_lowercase();
-
-            // We need to traverse LS_COLORS from back to front
-            // to be consistent with `ls`:
-            for (suffix, style) in self.suffix_mapping.iter().rev() {
-                // Note: For some reason, 'ends_with' is much
-                // slower if we omit `.as_str()` here:
-                if filename.ends_with(suffix.as_str()) {
-                    return style.as_ref();
-                }
-            }
+            let filename = file.file_name();
+            return self.style_for_str(&filename.to_str()?);
         }
 
         self.style_for_indicator(indicator)
+    }
+
+    /// Get the ANSI style for a string. This does not have to be a valid filepath.
+    pub fn style_for_str(&self, file_str: &str) -> Option<&Style> {
+        // make input lowercase for compatibility reasons
+        let input = file_str.to_ascii_lowercase();
+        let input_ref = input.as_str();
+
+        // We need to traverse LS_COLORS from back to front
+        // to be consistent with `ls`:
+        for (suffix, style) in self.suffix_mapping.iter().rev() {
+            // Note: For some reason, 'ends_with' is much
+            // slower if we omit `.as_str()` here:
+            if input_ref.ends_with(suffix.as_str()) {
+                return style.as_ref();
+            }
+        }
+        // It was not found
+        return None;
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
