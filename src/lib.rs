@@ -616,6 +616,22 @@ mod tests {
     }
 
     #[test]
+    fn style_for_str() {
+        let lscolors = LsColors::from_string("*.wav=00;36:*.rs=1;38;5;202:");
+        let files = ["", "test.wav", "test.rs"];
+        for file in files {
+            if let Some(style) = lscolors.style_for_str(file) {
+                let color = match file {
+                    "test.wav" => Some(Color::Cyan),
+                    "test.rs" => Some(Color::Fixed(202)),
+                    _ => unreachable!(),
+                };
+                assert_eq!(color, style.foreground);
+            }
+        }
+    }
+
+    #[test]
     fn style_for_directory() {
         let tmp_dir = temp_dir();
         let style = get_default_style(tmp_dir.path()).unwrap();
