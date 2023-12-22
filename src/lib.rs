@@ -403,7 +403,7 @@ impl LsColors {
             // Note: using '.to_str()' here means that filename
             // matching will not work with invalid-UTF-8 paths.
             let filename = file.file_name();
-            return self.style_for_str(&filename.to_str()?);
+            return self.style_for_str(filename.to_str()?);
         }
 
         self.style_for_indicator(indicator)
@@ -425,7 +425,7 @@ impl LsColors {
             }
         }
         // It was not found
-        return None;
+        None
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
