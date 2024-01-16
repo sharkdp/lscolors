@@ -316,13 +316,14 @@ jobs:
 
     - name: "Artifact upload: tarball"
       uses: actions/upload-artifact@master
+      if: matrix.terminal == 'ansi_term'
       with:
         name: ${{ steps.package.outputs.PKG_NAME }}
         path: ${{ steps.package.outputs.PKG_PATH }}
 
     - name: "Artifact upload: Debian package"
       uses: actions/upload-artifact@master
-      if: steps.debian-package.outputs.DPKG_NAME
+      if: steps.debian-package.outputs.DPKG_NAME && matrix.terminal == 'ansi_term'
       with:
         name: ${{ steps.debian-package.outputs.DPKG_NAME }}
         path: ${{ steps.debian-package.outputs.DPKG_PATH }}
