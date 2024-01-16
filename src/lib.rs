@@ -618,17 +618,17 @@ mod tests {
     #[test]
     fn style_for_str() {
         let lscolors = LsColors::from_string("*.wav=00;36:*.rs=1;38;5;202:");
-        let files = ["", "test.wav", "test.rs"];
-        for file in files {
-            if let Some(style) = lscolors.style_for_str(file) {
-                let color = match file {
-                    "test.wav" => Some(Color::Cyan),
-                    "test.rs" => Some(Color::Fixed(202)),
-                    _ => unreachable!(),
-                };
-                assert_eq!(color, style.foreground);
-            }
-        }
+
+        assert_eq!(lscolors.style_for_str(""), None);
+        assert_eq!(lscolors.style_for_str("test"), None);
+        assert_eq!(
+            lscolors.style_for_str("test.wav").unwrap().foreground,
+            Some(Color::Cyan)
+        );
+        assert_eq!(
+            lscolors.style_for_str("test.rs").unwrap().foreground,
+            Some(Color::Fixed(202))
+        );
     }
 
     #[test]
