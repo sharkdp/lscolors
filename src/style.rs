@@ -855,4 +855,20 @@ mod tests {
             cross.apply("wow").to_string()
         );
     }
+
+    #[cfg(all(feature = "owo-colors"))]
+    #[test]
+    fn coloring_owo_colors() {
+        use owo_colors::OwoColorize;
+        let style = Style {
+            font_style: FontStyle {
+                bold: true,
+                ..Default::default()
+            },
+            foreground: Some(Color::Blue),
+            ..Default::default()
+        };
+        let owo = style.to_owo_colors_style();
+        assert_eq!("\x1b[34;1mwow\x1b[0m", "wow".style(owo).to_string());
+    }
 }
