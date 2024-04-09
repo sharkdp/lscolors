@@ -115,6 +115,37 @@ impl Color {
             Color::BrightWhite => crossterm::style::Color::White,
         }
     }
+
+    /// Convert to a `owo-colors::DynColors` (if the `owo-colors` feature is enabled).
+    #[cfg(feature = "owo-colors")]
+    pub fn to_owo_color(&self) -> owo_colors::DynColors {
+        match self {
+            Color::RGB(r, g, b) => owo_colors::DynColors::Rgb(*r, *g, *b),
+            Color::Fixed(n) => owo_colors::DynColors::Xterm(owo_colors::XtermColors::from(*n)),
+
+            Color::Black => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Black),
+            Color::Red => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Red),
+            Color::Green => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Green),
+            Color::Yellow => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Yellow),
+            Color::Blue => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Blue),
+            Color::Magenta => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Magenta),
+            Color::Cyan => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::Cyan),
+            Color::White => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::White),
+
+            Color::BrightBlack => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightBlack),
+            Color::BrightRed => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightRed),
+            Color::BrightGreen => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightGreen),
+            Color::BrightYellow => {
+                owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightYellow)
+            }
+            Color::BrightBlue => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightBlue),
+            Color::BrightMagenta => {
+                owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightMagenta)
+            }
+            Color::BrightCyan => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightCyan),
+            Color::BrightWhite => owo_colors::DynColors::Ansi(owo_colors::AnsiColors::BrightWhite),
+        }
+    }
 }
 
 /// Font-style attributes.
@@ -473,6 +504,48 @@ impl Style {
             attributes: self.font_style.to_crossterm_attributes(),
             underline_color: self.underline.as_ref().map(Color::to_crossterm_color),
         }
+    }
+
+    /// Convert to a `owo_colors::Style` (if the `owo-colors` feature is enabled).
+    #[cfg(feature = "owo-colors")]
+    pub fn to_owo_colors_style(&self) -> owo_colors::Style {
+        let mut style = owo_colors::Style::new();
+        if let Some(ref c) = self.foreground {
+            style = style.color(c.to_owo_color())
+        }
+        if let Some(ref b) = self.background {
+            style = style.on_color(b.to_owo_color())
+        }
+        if self.font_style.bold {
+            style = style.bold()
+        }
+        if self.font_style.dimmed {
+            style = style.dimmed()
+        }
+        if self.font_style.hidden {
+            style = style.hidden()
+        }
+        if self.font_style.italic {
+            style = style.italic()
+        }
+        if self.font_style.rapid_blink {
+            style = style.blink_fast()
+        }
+        if self.font_style.reverse {
+            style = style.reversed()
+        }
+        if self.font_style.slow_blink {
+            style = style.blink()
+        }
+        if self.font_style.strikethrough {
+            style = style.strikethrough()
+        }
+        if self.font_style.underline {
+            style = style.underline()
+        }
+
+        // TODO: Implement colored underline. owo-colors does not support it at the time of writing.
+        style
     }
 }
 
