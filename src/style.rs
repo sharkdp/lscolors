@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 
 /// A `Color` can be one of the pre-defined ANSI colors (`Red`, `Green`, ..),
 /// a 8-bit ANSI color (`Fixed(u8)`) or a 24-bit color (`RGB(u8, u8, u8)`).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     Black,
     Red,
@@ -149,7 +149,7 @@ impl Color {
 }
 
 /// Font-style attributes.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct FontStyle {
     pub bold: bool,
     pub dimmed: bool, // a.k.a. faint
@@ -262,7 +262,7 @@ impl FontStyle {
 }
 
 /// A foreground color, background color and font-style.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Style {
     pub foreground: Option<Color>,
     pub background: Option<Color>,
