@@ -27,7 +27,7 @@
 mod fs;
 pub mod style;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::OsString;
 use std::fs::{DirEntry, FileType, Metadata};
@@ -218,6 +218,37 @@ impl Colorable for DirEntry {
     }
 }
 
+struct PathWithMetadata<'a> {
+    path: &'a Path,
+    metadata: Option<&'a Metadata>,
+}
+
+impl Colorable for PathWithMetadata<'_> {
+    fn path(&self) -> PathBuf {
+        self.path.to_owned()
+    }
+
+    fn file_name(&self) -> OsString {
+        // Path::file_name() only works if the last component is Normal, but
+        // we want it for all component types, so we open code it
+
+        self.path
+            .components()
+            .last()
+            .map(|c| c.as_os_str())
+            .unwrap_or_else(|| self.path.as_os_str())
+            .to_owned()
+    }
+
+    fn file_type(&self) -> Option<FileType> {
+        self.metadata.map(|m| m.file_type())
+    }
+
+    fn metadata(&self) -> Option<Metadata> {
+        self.metadata.cloned()
+    }
+}
+
 const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:su=37;41:di=01;34:st=37;44:ow=34;42:tw=30;42:ln=01;36:bd=01;33:cd=01;33:do=01;35:pi=33:so=01;35:";
 
 /// Holds information about how different file system entries should be colorized / styled.
@@ -228,6 +259,7 @@ pub struct LsColors {
     // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
     // preserve the exact order of the mapping in order to be consistent with `ls`.
     suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
+    pub zeroed_indicators: HashSet<Indicator>,
 }
 
 impl Default for LsColors {
@@ -246,6 +278,7 @@ impl LsColors {
         LsColors {
             indicator_mapping: HashMap::new(),
             suffix_mapping: vec![],
+            zeroed_indicators: HashSet::new(),
         }
     }
 
@@ -278,8 +311,10 @@ impl LsColors {
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
+                        self.zeroed_indicators.remove(&indicator);
                     } else {
                         self.indicator_mapping.remove(&indicator);
+                        self.zeroed_indicators.insert(indicator);
                     }
                 }
             }
@@ -316,7 +351,7 @@ impl LsColors {
     }
 
     /// Get the indicator type for a path with corresponding metadata.
-    fn indicator_for<F: Colorable>(&self, file: &F) -> Indicator {
+    pub fn indicator_for<F: Colorable>(&self, file: &F) -> Indicator {
         let file_type = file.file_type();
 
         if let Some(file_type) = file_type {
@@ -437,39 +472,17 @@ impl LsColors {
         path: P,
         metadata: Option<&std::fs::Metadata>,
     ) -> Option<&Style> {
-        struct PathWithMetadata<'a> {
-            path: &'a Path,
-            metadata: Option<&'a Metadata>,
-        }
-
-        impl Colorable for PathWithMetadata<'_> {
-            fn path(&self) -> PathBuf {
-                self.path.to_owned()
-            }
-
-            fn file_name(&self) -> OsString {
-                // Path::file_name() only works if the last component is Normal, but
-                // we want it for all component types, so we open code it
-
-                self.path
-                    .components()
-                    .last()
-                    .map(|c| c.as_os_str())
-                    .unwrap_or_else(|| self.path.as_os_str())
-                    .to_owned()
-            }
-
-            fn file_type(&self) -> Option<FileType> {
-                self.metadata.map(|m| m.file_type())
-            }
-
-            fn metadata(&self) -> Option<Metadata> {
-                self.metadata.cloned()
-            }
-        }
-
         let path = path.as_ref();
         self.style_for(&PathWithMetadata { path, metadata })
+    }
+
+    pub fn indicator_for_path_with_metadata<P: AsRef<Path>>(
+        &self,
+        path: P,
+        metadata: Option<&std::fs::Metadata>,
+    ) -> Indicator {
+        let path = path.as_ref();
+        self.indicator_for(&PathWithMetadata { path, metadata })
     }
 
     /// Get ANSI styles for each component of a given path. Components already include the path
@@ -811,5 +824,16 @@ mod tests {
         let lscolors = LsColors::from_string("*.png=01;35:*.png=0");
         let style = lscolors.style_for_path(&tmp_file);
         assert_eq!(None, style);
+    }
+
+    #[test]
+    fn test_zeroed_indicators() {
+        let lscolors = LsColors::from_string("*.png=01;35:fi=0");
+        assert!(lscolors.zeroed_indicators.contains(&Indicator::RegularFile));
+
+        let lscolors_override = LsColors::from_string("*.png=01;35:fi=0:fi=01;35");
+        assert!(!lscolors_override
+            .zeroed_indicators
+            .contains(&Indicator::RegularFile));
     }
 }
