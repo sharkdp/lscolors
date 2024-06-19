@@ -259,6 +259,7 @@ pub struct LsColors {
     // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
     // preserve the exact order of the mapping in order to be consistent with `ls`.
     suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
+    //Indicators that are passed with zero values
     pub zeroed_indicators: HashSet<Indicator>,
 }
 
@@ -476,6 +477,7 @@ impl LsColors {
         self.style_for(&PathWithMetadata { path, metadata })
     }
 
+    /// Returns the indicator for a path with corresponding metadata.
     pub fn indicator_for_path_with_metadata<P: AsRef<Path>>(
         &self,
         path: P,
