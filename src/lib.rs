@@ -225,6 +225,10 @@ const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:
 pub struct LsColors {
     indicator_mapping: HashMap<Indicator, Style>,
 
+    /// Whether Indicator::RegularFile falls back to Indicator::Normal
+    /// (see <https://github.com/sharkdp/lscolors/issues/48#issuecomment-1582830387>)
+    file_normal_fallback: bool,
+
     // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
     // preserve the exact order of the mapping in order to be consistent with `ls`.
     suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
@@ -245,6 +249,7 @@ impl LsColors {
     pub fn empty() -> Self {
         LsColors {
             indicator_mapping: HashMap::new(),
+            file_normal_fallback: true,
             suffix_mapping: vec![],
         }
     }
@@ -280,6 +285,9 @@ impl LsColors {
                         self.indicator_mapping.insert(indicator, style);
                     } else {
                         self.indicator_mapping.remove(&indicator);
+                        if indicator == Indicator::RegularFile {
+                            self.file_normal_fallback = false;
+                        }
                     }
                 }
             }
@@ -403,7 +411,9 @@ impl LsColors {
             // Note: using '.to_str()' here means that filename
             // matching will not work with invalid-UTF-8 paths.
             let filename = file.file_name();
-            return self.style_for_str(filename.to_str()?);
+            if let Some(style) = self.style_for_str(filename.to_str()?) {
+                return Some(style);
+            }
         }
 
         self.style_for_indicator(indicator)
@@ -509,7 +519,13 @@ impl LsColors {
                     _ => indicator,
                 })
             })
-            .or_else(|| self.indicator_mapping.get(&Indicator::Normal))
+            .or_else(|| {
+                if indicator == Indicator::RegularFile && !self.file_normal_fallback {
+                    None
+                } else {
+                    self.indicator_mapping.get(&Indicator::Normal)
+                }
+            })
     }
 }
 
@@ -810,6 +826,20 @@ mod tests {
 
         let lscolors = LsColors::from_string("*.png=01;35:*.png=0");
         let style = lscolors.style_for_path(&tmp_file);
+        assert_eq!(None, style);
+    }
+
+    #[test]
+    fn file_normal_fallback() {
+        let tmp_dir = temp_dir();
+        let tmp_file_path = create_file(tmp_dir.path().join("test-file"));
+
+        let lscolors = LsColors::from_string("no=01;31");
+        let style = lscolors.style_for_path(&tmp_file_path).unwrap();
+        assert_eq!(Some(Color::Red), style.foreground);
+
+        let lscolors = LsColors::from_string("no=01;31:fi=0");
+        let style = lscolors.style_for_path(&tmp_file_path);
         assert_eq!(None, style);
     }
 }
