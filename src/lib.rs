@@ -27,7 +27,7 @@
 mod fs;
 pub mod style;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::OsString;
 use std::fs::{DirEntry, FileType, Metadata};
@@ -220,6 +220,33 @@ impl Colorable for DirEntry {
 
 const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:su=37;41:di=01;34:st=37;44:ow=34;42:tw=30;42:ln=01;36:bd=01;33:cd=01;33:do=01;35:pi=33:so=01;35:";
 
+#[derive(Default, Debug, Clone)]
+struct SuffixMapping {
+    mappings: HashMap<FileNameSuffix, Option<Style>>,
+    case_sensitive: HashSet<FileNameSuffix>,
+}
+
+impl SuffixMapping {
+    fn push(&mut self, suffix: FileNameSuffix, style: Option<Style>) {
+        let normalized_suffix = suffix.to_ascii_lowercase();
+        // decides whether new mapping and it's varaints should be treated as case-sensitive
+        let is_case_sensitive = self.mappings.iter().any(|(m_suffix, m_style)| {
+            //any entry that are not exactly same as the new suffix
+            (*m_suffix != suffix)
+                // but is the same string with different letter case
+                && (normalized_suffix == m_suffix.to_ascii_lowercase())
+                // and it's mapped to a different style other than the new style 
+                && (style != *m_style)
+        });
+        if is_case_sensitive {
+            self.case_sensitive.insert(normalized_suffix);
+        } else {
+            self.case_sensitive.remove(&normalized_suffix);
+        }
+        self.mappings.insert(suffix, style);
+    }
+}
+
 /// Holds information about how different file system entries should be colorized / styled.
 #[derive(Debug, Clone)]
 pub struct LsColors {
@@ -228,10 +255,7 @@ pub struct LsColors {
     /// Whether Indicator::RegularFile falls back to Indicator::Normal
     /// (see <https://github.com/sharkdp/lscolors/issues/48#issuecomment-1582830387>)
     file_normal_fallback: bool,
-
-    // Note: you might expect to see a `HashMap` for `suffix_mapping` as well, but we need to
-    // preserve the exact order of the mapping in order to be consistent with `ls`.
-    suffix_mapping: Vec<(FileNameSuffix, Option<Style>)>,
+    suffix_mapping: SuffixMapping,
 }
 
 impl Default for LsColors {
@@ -250,7 +274,7 @@ impl LsColors {
         LsColors {
             indicator_mapping: HashMap::new(),
             file_normal_fallback: true,
-            suffix_mapping: vec![],
+            suffix_mapping: SuffixMapping::default(),
         }
     }
 
@@ -278,8 +302,7 @@ impl LsColors {
             if let Some([entry, ansi_style]) = parts.get(0..2) {
                 let style = Style::from_ansi_sequence(ansi_style);
                 if let Some(suffix) = entry.strip_prefix('*') {
-                    self.suffix_mapping
-                        .push((suffix.to_string().to_ascii_lowercase(), style));
+                    self.suffix_mapping.push(suffix.to_string(), style);
                 } else if let Some(indicator) = Indicator::from(entry) {
                     if let Some(style) = style {
                         self.indicator_mapping.insert(indicator, style);
@@ -421,21 +444,30 @@ impl LsColors {
 
     /// Get the ANSI style for a string. This does not have to be a valid filepath.
     pub fn style_for_str(&self, file_str: &str) -> Option<&Style> {
-        // make input lowercase for compatibility reasons
-        let input = file_str.to_ascii_lowercase();
-        let input_ref = input.as_str();
-
-        // We need to traverse LS_COLORS from back to front
-        // to be consistent with `ls`:
-        for (suffix, style) in self.suffix_mapping.iter().rev() {
-            // Note: For some reason, 'ends_with' is much
-            // slower if we omit `.as_str()` here:
-            if input_ref.ends_with(suffix.as_str()) {
-                return style.as_ref();
+        let file_str_normalized = file_str.to_ascii_lowercase();
+        let mut last_matched_style = None;
+        let mut last_matched_len = 0;
+        for (suffix, style) in self.suffix_mapping.mappings.iter() {
+            let suffix_len = suffix.len();
+            if last_matched_len > suffix_len {
+                continue;
+            }
+            let suffix_normalized = suffix.to_ascii_lowercase();
+            let case_sensitive = self
+                .suffix_mapping
+                .case_sensitive
+                .contains(&suffix_normalized);
+            if case_sensitive {
+                if file_str.ends_with(suffix) {
+                    last_matched_len = suffix_len;
+                    last_matched_style = style.as_ref();
+                }
+            } else if file_str_normalized.ends_with(&suffix_normalized) {
+                last_matched_len = suffix_len;
+                last_matched_style = style.as_ref();
             }
         }
-        // It was not found
-        None
+        last_matched_style
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
@@ -841,5 +873,84 @@ mod tests {
         let lscolors = LsColors::from_string("no=01;31:fi=0");
         let style = lscolors.style_for_path(&tmp_file_path);
         assert_eq!(None, style);
+    }
+    #[test]
+    fn file_suffix_case() {
+        let assert_bold_fg_magenta = |style: Option<&Style>| {
+            Some(Color::Magenta) == style.and_then(|v| v.foreground)
+                && matches!(style,Some(sty) if sty.font_style.bold )
+        };
+        let assert_bold_fg_green = |style: Option<&Style>| {
+            Some(Color::Green) == style.and_then(|v| v.foreground)
+                && matches!(style,Some(sty) if sty.font_style.bold )
+        };
+
+        // *.jpg is specified only once so any suffix that has .jpg should match
+        // without caring about the letter case
+        let lscolors = LsColors::from_string("*.jpg=01;35:*.Z=01;31");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_magenta(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_magenta(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(assert_bold_fg_magenta(mixedcase_suffix));
+
+        // *.jpg is specified more than once with different cases and style, so
+        // case should matter here
+        let lscolors = LsColors::from_string("*.jpg=01;35:*.JPG=01;32");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_magenta(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_green(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(mixedcase_suffix.is_none());
+
+        // *.jpg is specified more than once with different cases but style is same, so
+        // case can ignored
+        let lscolors = LsColors::from_string("*.jpg=01;35:*.JPG=01;35");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_magenta(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_magenta(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(assert_bold_fg_magenta(mixedcase_suffix));
+
+        // last *.jpg gets more priority resulting in same style across
+        // different cases specified, so case can ignored
+        let lscolors = LsColors::from_string("*.jpg=01;32:*.jpg=01;35:*.JPG=01;35");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_magenta(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_magenta(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(assert_bold_fg_magenta(mixedcase_suffix));
+
+        // same as above with different combinations
+        let lscolors = LsColors::from_string("*.jpg=01;32:*.jpg=01;35:*.JPG=01;32:*.jpg=01;32");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_green(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_green(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(assert_bold_fg_green(mixedcase_suffix));
+
+        // last *.jpg gets more priority resulting in different style across
+        // different cases specified, so case matters
+        let lscolors = LsColors::from_string("*.jpg=01;32:*.jpg=01;35:*.JPG=01;32");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_magenta(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_green(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(mixedcase_suffix.is_none());
+
+        // same as above with different combinations
+        let lscolors = LsColors::from_string("*.jpg=01;32:*.jpg=01;35:*.JPG=01;35:*.jpg=01;32");
+        let lowercase_suffix = lscolors.style_for_str("img1.jpg");
+        assert!(assert_bold_fg_green(lowercase_suffix));
+        let uppercase_suffix = lscolors.style_for_str("img1.JPG");
+        assert!(assert_bold_fg_magenta(uppercase_suffix));
+        let mixedcase_suffix = lscolors.style_for_str("img1.JpG");
+        assert!(mixedcase_suffix.is_none());
     }
 }
