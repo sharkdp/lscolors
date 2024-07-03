@@ -480,12 +480,11 @@ impl LsColors {
                         }
                     }
                 } else {
-                    // case doesn't matter, that means every variant has
-                    // the same style so we could just take the first one.
+                    // case doesn't matter, but we need select the one with the biggest priority.
                     let (style, priority) = suffix_mapping_entry
                         .variants
                         .values()
-                        .next()
+                        .max_by(|x, y| x.1.cmp(&y.1))
                         // it okay to unwrap here, because there should exist atleast one variant.
                         .unwrap();
                     if *priority >= last_matched_priority {
