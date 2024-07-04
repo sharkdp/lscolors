@@ -235,17 +235,12 @@ struct SuffixMappingEntry {
 }
 
 impl SuffixMappingEntry {
-    fn push(&mut self, suffix: FileNameSuffix, style: Option<Style>, priority: Priority) {
-        // Determines if the new mapping and its variants should be treated as
-        // case-sensitive.
-        let is_case_sensitive = self.variants.iter().any(|(v_suffix, (v_style, _))| {
-            //Any entry that are not exactly same as the new suffix,
-            (*v_suffix != suffix)
-                // and it is mapped to a different style other than the new style.
-                && (style != *v_style)
-        });
-        self.case_sensitive = is_case_sensitive;
-        self.variants.insert(suffix, (style, priority));
+    fn init_case_sensitivity(&mut self) {
+        // we treat an entry as case-insensitive when all the styles are equal
+        let mut iter = self.variants.values();
+        // it's okay to unwrap here because there must be atleast element present
+        let (ref_style, _) = iter.next().unwrap();
+        self.case_sensitive = iter.any(|(style, _)| style != ref_style);
     }
 }
 
@@ -316,6 +311,9 @@ impl LsColors {
                 }
             }
         }
+        self.suffix_mapping
+            .values_mut()
+            .for_each(|entry| entry.init_case_sensitivity());
     }
 
     fn add_suffix_entry(
@@ -327,7 +325,9 @@ impl LsColors {
         // We use `to_ascii_lowercase` here to normalize suffix to use as keys.
         let suffix_normalized = suffix.to_ascii_lowercase();
         let suffix_mapping_entry = self.suffix_mapping.entry(suffix_normalized).or_default();
-        suffix_mapping_entry.push(suffix, style, priority);
+        suffix_mapping_entry
+            .variants
+            .insert(suffix, (style, priority));
     }
 
     /// Get the ANSI style for a given path.
