@@ -26,12 +26,15 @@
 
 mod fs;
 pub mod style;
+mod suffix;
 
 use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{DirEntry, FileType, Metadata};
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
+
+use crate::suffix::{SuffixMap, SuffixMapBuilder};
 
 pub use crate::style::{Color, FontStyle, Style};
 
@@ -142,9 +145,6 @@ impl Indicator {
     }
 }
 
-type FileNameSuffix = String;
-type Priority = usize;
-
 /// Iterator over the path components with their respective style.
 pub struct StyledComponents<'a> {
     /// Reference to the underlying LsColors object
@@ -219,28 +219,64 @@ impl Colorable for DirEntry {
     }
 }
 
-const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:su=37;41:di=01;34:st=37;44:ow=34;42:tw=30;42:ln=01;36:bd=01;33:cd=01;33:do=01;35:pi=33:so=01;35:";
+/// Builder for [LsColors].
+struct LsColorsBuilder {
+    indicator_mapping: HashMap<Indicator, Style>,
 
-#[derive(Default, Debug, Clone)]
-struct SuffixMappingEntry {
-    /// Keys are non-normalized suffixes(variants of the suffix), and values are
-    /// tuples containing an style and their priority.
-    /// We need to store the priority (the index of the entry in the env) here
-    /// because ls has an overriding mechanism. For example,
-    /// *.gz=01;33:*.tar.gz=01;31: and *.tar.gz=01;31:*.gz=01;33: are not the
-    /// same.
-    variants: HashMap<FileNameSuffix, (Option<Style>, Priority)>,
-    // whether the variants are case sensitive or not
-    case_sensitive: bool,
+    /// Whether Indicator::RegularFile falls back to Indicator::Normal
+    /// (see <https://github.com/sharkdp/lscolors/issues/48#issuecomment-1582830387>)
+    file_normal_fallback: bool,
+
+    suffixes: SuffixMapBuilder,
 }
 
-impl SuffixMappingEntry {
-    fn init_case_sensitivity(&mut self) {
-        // we treat an entry as case-insensitive when all the styles are equal
-        let mut iter = self.variants.values();
-        // it's okay to unwrap here because there must be atleast element present
-        let (ref_style, _) = iter.next().unwrap();
-        self.case_sensitive = iter.any(|(style, _)| style != ref_style);
+impl LsColorsBuilder {
+    fn empty() -> Self {
+        Self {
+            indicator_mapping: HashMap::new(),
+            file_normal_fallback: true,
+            suffixes: SuffixMapBuilder::default(),
+        }
+    }
+
+    fn add_from_string(&mut self, input: &str) {
+        for entry in input.split(':') {
+            let parts: Vec<_> = entry.split('=').collect();
+
+            if let Some([entry, ansi_style]) = parts.get(0..2) {
+                let style = Style::from_ansi_sequence(ansi_style);
+                if let Some(suffix) = entry.strip_prefix('*') {
+                    self.suffixes.push(suffix, style);
+                } else if let Some(indicator) = Indicator::from(entry) {
+                    if let Some(style) = style {
+                        self.indicator_mapping.insert(indicator, style);
+                    } else {
+                        self.indicator_mapping.remove(&indicator);
+                        if indicator == Indicator::RegularFile {
+                            self.file_normal_fallback = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn build(self) -> LsColors {
+        LsColors {
+            indicator_mapping: self.indicator_mapping,
+            file_normal_fallback: self.file_normal_fallback,
+            suffixes: self.suffixes.build(),
+        }
+    }
+}
+
+const LS_COLORS_DEFAULT: &str = "rs=0:lc=\x1b[:rc=m:cl=\x1b[K:ex=01;32:sg=30;43:su=37;41:di=01;34:st=37;44:ow=34;42:tw=30;42:ln=01;36:bd=01;33:cd=01;33:do=01;35:pi=33:so=01;35:";
+
+impl Default for LsColorsBuilder {
+    fn default() -> Self {
+        let mut builder = Self::empty();
+        builder.add_from_string(LS_COLORS_DEFAULT);
+        builder
     }
 }
 
@@ -252,27 +288,22 @@ pub struct LsColors {
     /// Whether Indicator::RegularFile falls back to Indicator::Normal
     /// (see <https://github.com/sharkdp/lscolors/issues/48#issuecomment-1582830387>)
     file_normal_fallback: bool,
-    suffix_mapping: HashMap<FileNameSuffix, SuffixMappingEntry>,
+
+    suffixes: SuffixMap,
 }
 
 impl Default for LsColors {
     /// Constructs a default `LsColors` instance with some default styles. See `man dircolors` for
     /// information about the default styles and colors.
     fn default() -> Self {
-        let mut lscolors = LsColors::empty();
-        lscolors.add_from_string(LS_COLORS_DEFAULT);
-        lscolors
+        LsColorsBuilder::default().build()
     }
 }
 
 impl LsColors {
     /// Construct an empty [`LsColors`](struct.LsColors.html) instance with no pre-defined styles.
     pub fn empty() -> Self {
-        LsColors {
-            indicator_mapping: HashMap::new(),
-            file_normal_fallback: true,
-            suffix_mapping: HashMap::new(),
-        }
+        LsColorsBuilder::empty().build()
     }
 
     /// Creates a new [`LsColors`](struct.LsColors.html) instance from the `LS_COLORS` environment
@@ -287,47 +318,9 @@ impl LsColors {
 
     /// Creates a new [`LsColors`](struct.LsColors.html) instance from the given string.
     pub fn from_string(input: &str) -> Self {
-        let mut lscolors = LsColors::default();
-        lscolors.add_from_string(input);
-        lscolors
-    }
-
-    fn add_from_string(&mut self, input: &str) {
-        for (idx, entry) in input.split(':').enumerate() {
-            let parts: Vec<_> = entry.split('=').collect();
-            if let Some([entry, ansi_style]) = parts.get(0..2) {
-                let style = Style::from_ansi_sequence(ansi_style);
-                if let Some(suffix) = entry.strip_prefix('*') {
-                    self.add_suffix_entry(suffix.to_string(), style, idx);
-                } else if let Some(indicator) = Indicator::from(entry) {
-                    if let Some(style) = style {
-                        self.indicator_mapping.insert(indicator, style);
-                    } else {
-                        self.indicator_mapping.remove(&indicator);
-                        if indicator == Indicator::RegularFile {
-                            self.file_normal_fallback = false;
-                        }
-                    }
-                }
-            }
-        }
-        self.suffix_mapping
-            .values_mut()
-            .for_each(|entry| entry.init_case_sensitivity());
-    }
-
-    fn add_suffix_entry(
-        &mut self,
-        suffix: FileNameSuffix,
-        style: Option<Style>,
-        priority: Priority,
-    ) {
-        // We use `to_ascii_lowercase` here to normalize suffix to use as keys.
-        let suffix_normalized = suffix.to_ascii_lowercase();
-        let suffix_mapping_entry = self.suffix_mapping.entry(suffix_normalized).or_default();
-        suffix_mapping_entry
-            .variants
-            .insert(suffix, (style, priority));
+        let mut builder = LsColorsBuilder::default();
+        builder.add_from_string(input);
+        builder.build()
     }
 
     /// Get the ANSI style for a given path.
@@ -457,44 +450,7 @@ impl LsColors {
 
     /// Get the ANSI style for a string. This does not have to be a valid filepath.
     pub fn style_for_str(&self, file_str: &str) -> Option<&Style> {
-        let file_str_len = file_str.len();
-        let file_str_normalized = file_str.to_ascii_lowercase();
-        let mut last_matched_style: Option<&Style> = None;
-        let mut last_matched_priority = 0;
-        for (suffix_normalized, suffix_mapping_entry) in self.suffix_mapping.iter() {
-            // check if there is an entry for the suffix
-            if file_str_normalized.ends_with(suffix_normalized) {
-                // check whether the entry is marked as case sensitive or not
-                if suffix_mapping_entry.case_sensitive {
-                    // then we need to check whether there is a suffix that exactly
-                    // matches in different variants.
-                    // we could do that by finding the suffix variant that appears in the filename,
-                    let file_str_suffix = &file_str[file_str_len - suffix_normalized.len()..];
-                    // and use that to find the corresponding style.
-                    if let Some((style, priority)) =
-                        suffix_mapping_entry.variants.get(file_str_suffix)
-                    {
-                        if *priority >= last_matched_priority {
-                            last_matched_style = style.as_ref();
-                            last_matched_priority = *priority;
-                        }
-                    }
-                } else {
-                    // case doesn't matter, but we need select the one with the biggest priority.
-                    let (style, priority) = suffix_mapping_entry
-                        .variants
-                        .values()
-                        .max_by(|x, y| x.1.cmp(&y.1))
-                        // it okay to unwrap here, because there should exist atleast one variant.
-                        .unwrap();
-                    if *priority >= last_matched_priority {
-                        last_matched_style = style.as_ref();
-                        last_matched_priority = *priority;
-                    }
-                }
-            }
-        }
-        last_matched_style
+        self.suffixes.get(file_str)
     }
 
     /// Get the ANSI style for a path, given the corresponding `Metadata` struct.
@@ -918,15 +874,16 @@ mod tests {
         let style = lscolors.style_for_path(&tmp_file_path);
         assert_eq!(None, style);
     }
+
     #[test]
     fn file_suffix_case() {
         let assert_bold_fg_magenta = |style: Option<&Style>| {
             Some(Color::Magenta) == style.and_then(|v| v.foreground)
-                && matches!(style,Some(sty) if sty.font_style.bold )
+                && matches!(style,Some(sty) if sty.font_style.bold)
         };
         let assert_bold_fg_green = |style: Option<&Style>| {
             Some(Color::Green) == style.and_then(|v| v.foreground)
-                && matches!(style,Some(sty) if sty.font_style.bold )
+                && matches!(style,Some(sty) if sty.font_style.bold)
         };
 
         // *.jpg is specified only once so any suffix that has .jpg should match
