@@ -27,6 +27,7 @@ ansi_term = { version = "0.12", optional = true }
 nu-ansi-term = { version = "0.50", optional = true }
 crossterm = { version = "0.27", optional = true }
 owo-colors = { version = "4.0", optional = true }
+capctl = "0.2.4"
 
 [dev-dependencies]
 tempfile = "^3"

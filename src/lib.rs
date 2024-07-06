@@ -198,6 +198,13 @@ pub trait Colorable {
 
     /// Try to get the metadata for this file.
     fn metadata(&self) -> Option<Metadata>;
+
+    fn has_capabilities(&self) -> bool {
+        matches!(
+            capctl::caps::FileCaps::get_for_file(self.path()),
+            Ok(Some(..))
+        )
+    }
 }
 
 impl Colorable for DirEntry {
@@ -333,11 +340,14 @@ impl LsColors {
                     if let Some(metadata) = file.metadata() {
                         let mode = crate::fs::mode(&metadata);
                         let nlink = crate::fs::nlink(&metadata);
-
                         if self.has_color_for(Indicator::Setuid) && mode & 0o4000 != 0 {
                             return Indicator::Setuid;
                         } else if self.has_color_for(Indicator::Setgid) && mode & 0o2000 != 0 {
                             return Indicator::Setgid;
+                        } else if self.has_color_for(Indicator::Capabilities)
+                            && file.has_capabilities()
+                        {
+                            return Indicator::Capabilities;
                         } else if self.has_color_for(Indicator::ExecutableFile)
                             && mode & 0o0111 != 0
                         {
