@@ -199,11 +199,16 @@ pub trait Colorable {
     /// Try to get the metadata for this file.
     fn metadata(&self) -> Option<Metadata>;
 
+    #[cfg(target_os = "linux")]
     fn has_capabilities(&self) -> bool {
         matches!(
             capctl::caps::FileCaps::get_for_file(self.path()),
             Ok(Some(..))
         )
+    }
+    #[cfg(not(target_os = "linux"))]
+    fn has_capabilities(&self) -> bool {
+        false
     }
 }
 
