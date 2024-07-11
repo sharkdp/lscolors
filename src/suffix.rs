@@ -166,7 +166,18 @@ impl SuffixMap {
         // Split off only the longest suffix necessary
         let len = self.max_len.min(name.len());
         let i = name.len() - len;
-        let mut name: Box<[u8]> = name[i..].into();
+
+        // Copy the suffix to the stack if small, otherwise the heap
+        let mut name_stack = [0; 32];
+        let mut name_heap: Box<[u8]>;
+
+        let name = if len <= name_stack.len() {
+            name_stack[..len].copy_from_slice(&name[i..]);
+            &mut name_stack[..len]
+        } else {
+            name_heap = name[i..].into();
+            &mut name_heap
+        };
 
         // Reverse the suffix for matching
         name.reverse();
