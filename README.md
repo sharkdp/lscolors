@@ -1,7 +1,5 @@
 # lscolors
 
-<img src="https://i.imgur.com/RE4Ont5.png" align="right">
-
 [![CICD](https://github.com/sharkdp/lscolors/actions/workflows/CICD.yml/badge.svg)](https://github.com/sharkdp/lscolors/actions/workflows/CICD.yml)
 [![Crates.io](https://img.shields.io/crates/v/lscolors.svg)](https://crates.io/crates/lscolors)
 [![Documentation](https://docs.rs/lscolors/badge.svg)](https://docs.rs/lscolors)
@@ -9,6 +7,8 @@
 A cross-platform library for colorizing paths according to the `LS_COLORS` environment variable (like `ls`).
 
 ## Usage
+
+<img src="https://i.imgur.com/RE4Ont5.png" align="right">
 
 ```rust
 use lscolors::{LsColors, Style};
