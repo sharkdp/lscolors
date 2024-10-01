@@ -183,10 +183,10 @@ impl SuffixMap {
         name.reverse();
 
         // Find a case-sensitive match
-        let cs_index = Self::find(&self.cs_matcher, &name);
+        let cs_index = Self::find(&self.cs_matcher, name);
 
         // Find a case-insensitive match
-        let ci_index = Self::find(&self.ci_matcher, &name).map(|i| self.ci_ids[i]);
+        let ci_index = Self::find(&self.ci_matcher, name).map(|i| self.ci_ids[i]);
 
         // Return the later match (earlier index)
         let i = match (cs_index, ci_index) {

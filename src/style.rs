@@ -856,7 +856,7 @@ mod tests {
         );
     }
 
-    #[cfg(all(feature = "owo-colors"))]
+    #[cfg(feature = "owo-colors")]
     #[test]
     fn coloring_owo_colors() {
         use owo_colors::OwoColorize;
