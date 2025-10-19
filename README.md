@@ -60,13 +60,13 @@ cargo build --release --features=nu-ansi-term --locked
 
 [dependencies]
 // use ansi-term coloring
-lscolors = { version = "v0.14.0", features = ["ansi_term"] }
+lscolors = { version = "0.21", features = ["ansi_term"] }
 // use crossterm coloring
-lscolors = { version = "v0.14.0", features = ["crossterm"] }
+lscolors = { version = "0.21", features = ["crossterm"] }
 // use nu-ansi-term coloring
-lscolors = { version = "v0.14.0", features = ["nu-ansi-term"] }
+lscolors = { version = "0.21", features = ["nu-ansi-term"] }
 // use nu-ansi-term coloring in gnu legacy mode with double digit styles
-lscolors = { version = "v0.14.0", features = ["gnu_legacy"] }
+lscolors = { version = "0.21", features = ["gnu_legacy"] }
 ```
 
 ## License
