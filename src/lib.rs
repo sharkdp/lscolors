@@ -333,23 +333,23 @@ impl LsColors {
     }
 
     /// Check if an indicator has an associated color.
-    pub fn has_explicit_syle_for(&self, indicator: Indicator) -> bool {
+    pub fn has_explicit_style_for(&self, indicator: Indicator) -> bool {
         self.indicator_mapping.contains_key(&indicator)
     }
 
     /// Check if we need metadata to color a regular file.
     fn needs_file_metadata(&self) -> bool {
-        self.has_explicit_syle_for(Indicator::Setuid)
-            || self.has_explicit_syle_for(Indicator::Setgid)
-            || self.has_explicit_syle_for(Indicator::ExecutableFile)
-            || self.has_explicit_syle_for(Indicator::MultipleHardLinks)
+        self.has_explicit_style_for(Indicator::Setuid)
+            || self.has_explicit_style_for(Indicator::Setgid)
+            || self.has_explicit_style_for(Indicator::ExecutableFile)
+            || self.has_explicit_style_for(Indicator::MultipleHardLinks)
     }
 
     /// Check if we need metadata to color a directory.
     fn needs_dir_metadata(&self) -> bool {
-        self.has_explicit_syle_for(Indicator::StickyAndOtherWritable)
-            || self.has_explicit_syle_for(Indicator::OtherWritable)
-            || self.has_explicit_syle_for(Indicator::Sticky)
+        self.has_explicit_style_for(Indicator::StickyAndOtherWritable)
+            || self.has_explicit_style_for(Indicator::OtherWritable)
+            || self.has_explicit_style_for(Indicator::Sticky)
     }
 
     /// Get the indicator type for a path with corresponding metadata.
@@ -363,17 +363,17 @@ impl LsColors {
                         let mode = crate::fs::mode(&metadata);
                         let nlink = crate::fs::nlink(&metadata);
 
-                        if self.has_explicit_syle_for(Indicator::Setuid) && mode & 0o4000 != 0 {
+                        if self.has_explicit_style_for(Indicator::Setuid) && mode & 0o4000 != 0 {
                             return Indicator::Setuid;
-                        } else if self.has_explicit_syle_for(Indicator::Setgid)
+                        } else if self.has_explicit_style_for(Indicator::Setgid)
                             && mode & 0o2000 != 0
                         {
                             return Indicator::Setgid;
-                        } else if self.has_explicit_syle_for(Indicator::ExecutableFile)
+                        } else if self.has_explicit_style_for(Indicator::ExecutableFile)
                             && mode & 0o0111 != 0
                         {
                             return Indicator::ExecutableFile;
-                        } else if self.has_explicit_syle_for(Indicator::MultipleHardLinks)
+                        } else if self.has_explicit_style_for(Indicator::MultipleHardLinks)
                             && nlink > 1
                         {
                             return Indicator::MultipleHardLinks;
@@ -387,15 +387,15 @@ impl LsColors {
                     if let Some(metadata) = file.metadata() {
                         let mode = crate::fs::mode(&metadata);
 
-                        if self.has_explicit_syle_for(Indicator::StickyAndOtherWritable)
+                        if self.has_explicit_style_for(Indicator::StickyAndOtherWritable)
                             && mode & 0o1002 == 0o1002
                         {
                             return Indicator::StickyAndOtherWritable;
-                        } else if self.has_explicit_syle_for(Indicator::OtherWritable)
+                        } else if self.has_explicit_style_for(Indicator::OtherWritable)
                             && mode & 0o0002 != 0
                         {
                             return Indicator::OtherWritable;
-                        } else if self.has_explicit_syle_for(Indicator::Sticky)
+                        } else if self.has_explicit_style_for(Indicator::Sticky)
                             && mode & 0o1000 != 0
                         {
                             return Indicator::Sticky;
@@ -406,7 +406,7 @@ impl LsColors {
                 Indicator::Directory
             } else if file_type.is_symlink() {
                 // This works because `Path::exists` traverses symlinks.
-                if self.has_explicit_syle_for(Indicator::OrphanedSymbolicLink)
+                if self.has_explicit_style_for(Indicator::OrphanedSymbolicLink)
                     && !file.path().exists()
                 {
                     return Indicator::OrphanedSymbolicLink;
