@@ -365,13 +365,17 @@ impl LsColors {
 
                         if self.has_explicit_syle_for(Indicator::Setuid) && mode & 0o4000 != 0 {
                             return Indicator::Setuid;
-                        } else if self.has_explicit_syle_for(Indicator::Setgid) && mode & 0o2000 != 0 {
+                        } else if self.has_explicit_syle_for(Indicator::Setgid)
+                            && mode & 0o2000 != 0
+                        {
                             return Indicator::Setgid;
                         } else if self.has_explicit_syle_for(Indicator::ExecutableFile)
                             && mode & 0o0111 != 0
                         {
                             return Indicator::ExecutableFile;
-                        } else if self.has_explicit_syle_for(Indicator::MultipleHardLinks) && nlink > 1 {
+                        } else if self.has_explicit_syle_for(Indicator::MultipleHardLinks)
+                            && nlink > 1
+                        {
                             return Indicator::MultipleHardLinks;
                         }
                     }
@@ -387,10 +391,13 @@ impl LsColors {
                             && mode & 0o1002 == 0o1002
                         {
                             return Indicator::StickyAndOtherWritable;
-                        } else if self.has_explicit_syle_for(Indicator::OtherWritable) && mode & 0o0002 != 0
+                        } else if self.has_explicit_syle_for(Indicator::OtherWritable)
+                            && mode & 0o0002 != 0
                         {
                             return Indicator::OtherWritable;
-                        } else if self.has_explicit_syle_for(Indicator::Sticky) && mode & 0o1000 != 0 {
+                        } else if self.has_explicit_syle_for(Indicator::Sticky)
+                            && mode & 0o1000 != 0
+                        {
                             return Indicator::Sticky;
                         }
                     }
@@ -399,7 +406,9 @@ impl LsColors {
                 Indicator::Directory
             } else if file_type.is_symlink() {
                 // This works because `Path::exists` traverses symlinks.
-                if self.has_explicit_syle_for(Indicator::OrphanedSymbolicLink) && !file.path().exists() {
+                if self.has_explicit_syle_for(Indicator::OrphanedSymbolicLink)
+                    && !file.path().exists()
+                {
                     return Indicator::OrphanedSymbolicLink;
                 }
 
