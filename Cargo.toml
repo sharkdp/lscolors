@@ -16,7 +16,7 @@ version = "0.20.0"
 readme = "README.md"
 edition = "2021"
 authors = ["David Peter <mail@david-peter.de>"]
-rust-version = "1.70.0"
+rust-version = "1.76.0"
 
 [features]
 default = ["nu-ansi-term"]
